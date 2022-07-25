@@ -9,6 +9,6 @@ contract MockFruityERC20 is ERC20 {
         "FRTY",
         8
     ) {
-        _mint(msg.sender, 10000000);
+        _mint(msg.sender, 10000000 * (10 ** 8));
     }
 }

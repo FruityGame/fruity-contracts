@@ -14,8 +14,6 @@ contract BoardTest is Test {
         // 2:[0001|0001|0001|0000|0001] 1:[0010|0011|0100|0011|0011] 0:[0001|0000|0100|0011|0000]
         uint256 layout = Board.generate(MAX_INT);
 
-        emit log_uint(layout);
-
         // Check Row 0
         assertEq(Board.get(layout, 0, 0), 0);
         assertEq(Board.get(layout, 0, 1), 3);

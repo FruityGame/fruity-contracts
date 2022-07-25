@@ -5,14 +5,18 @@ import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
 contract MockChainlinkVRF is VRFCoordinatorV2Interface {
-    uint256 requestId = 0;
+    uint256 public requestId = 0;
     address request;
 
     function fulfill(uint256 randomness) external {
-        VRFConsumerBaseV2 base;
-        request.call(
-            abi.encodeWithSelector(base.rawFulfillRandomWords.selector, requestId, [randomness])
+        uint256[] memory words = new uint256[](1);
+        words[0] = randomness;
+
+        (bool success, ) = request.call(
+            abi.encodeWithSelector(VRFConsumerBaseV2.rawFulfillRandomWords.selector, requestId, words)
         );
+
+        require(success, "VRF Callback failed");
     }
 
     function requestRandomWords(
@@ -26,10 +30,6 @@ contract MockChainlinkVRF is VRFCoordinatorV2Interface {
     {
         request = msg.sender;
         return requestId += 1;
-    }
-
-    function getLatestRequestId() public view returns (uint256) {
-        return requestId;
     }
 
     function acceptSubscriptionOwnerTransfer(uint64 subId) external override {}

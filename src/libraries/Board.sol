@@ -14,7 +14,7 @@ library Board {
         _;
     }
 
-    function numToSymbol(uint256 result) internal pure returns (uint256) {
+    function numToSymbol(uint256 result) public pure returns (uint256) {
         if (result <= 33) return 0;
         if (result <= 55) return 1;
         if (result <= 68) return 2;

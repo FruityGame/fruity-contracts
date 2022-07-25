@@ -8,12 +8,12 @@ import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "src/randomness/Beacon.sol";
 
 abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
-    VRFCoordinatorV2Interface coordinator;
-    LinkTokenInterface link;
+    VRFCoordinatorV2Interface private immutable coordinator;
+    LinkTokenInterface private immutable link;
 
-    bytes32 keyHash;
-    uint64 subscriptionId;
-    address owner;
+    bytes32 private immutable keyHash;
+    uint64 private immutable subscriptionId;
+    address private immutable owner;
 
     constructor(
         address _coordinator,
@@ -42,6 +42,7 @@ abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        //require(msg.sender == address(coordinator), "Invalid VRF fulfill request");
         fulfillRandomness(requestId, randomWords[0]);
     }
 
