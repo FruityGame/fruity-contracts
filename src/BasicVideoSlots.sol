@@ -38,6 +38,11 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         address(this)
     ) {}
 
+    modifier isValidBet(uint256 betWad) {
+        require(betWad > 1000000000000000, "Bet must be at least 1000000 Gwei");
+        _;
+    }
+
     modifier activeBet() {
         require(requests[msg.sender] != 0, "No bet active for user");
         _;
@@ -48,7 +53,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         _;
     }
 
-    function placeBet(uint256 betWad, uint256 winlines) public payable noActiveBet() nonReentrant() {
+    function placeBet(uint256 betWad, uint256 winlines) public payable noActiveBet() isValidBet(betWad) nonReentrant() {
         uint256 totalBet = betWad * Winline.count(winlines);
         require(msg.value >= totalBet, "Amount provided not enough to cover bet");
 
