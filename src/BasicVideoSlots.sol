@@ -16,14 +16,14 @@ struct Session {
 uint256 constant MASK_16 = (0x1 << 16) - 1;
 
 contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
-    uint256 public jackpot = 0;
+    uint256 private _jackpot = 0;
 
     // Mapping of user addresses to chainlink requestId's
-    mapping(address => uint256) public requests;
+    mapping(address => uint256) private requests;
     // Mapping of chainlink requestId's to Winlines
     mapping(uint256 => Session) private sessions;
 
-    event BetFulfilled(address user, uint256 board, uint256 _jackpot);
+    event BetFulfilled(address user, uint256 board, uint256 __jackpot);
 
     constructor(
         address coordinator,
@@ -62,30 +62,26 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     // therefore we don't need to change its value in accordance with cancelling the bet
     function withdrawBet() public activeBet() nonReentrant() {
         Session storage session = sessions[requests[msg.sender]];
-        if (session.betWad > 0) {
-            (bool success, ) = session.user.call{
-                value: session.betWad * Winline.count(session.winlines)
-            } ("");
-            require(success, "Failed to withdraw bet");
+        (bool success, ) = session.user.call{
+            value: session.betWad * Winline.count(session.winlines)
+        } ("");
+        require(success, "Failed to withdraw bet");
 
-            session.betWad = 0;
-        }
-
-        requests[session.user] = 0;
+        requests[msg.sender] = 0;
     }
 
     function fulfillRandomness(uint256 id, uint256 randomness) internal override nonReentrant() {
         // Get the User session associated with this request ID
         Session storage session = sessions[id];
 
-        require(requests[session.user] != 0, "No request present for user");
+        require(requests[session.user] == id, "Invalid VRF RequestID Received");
 
         uint256 board = Board.generate(randomness);
         uint256 winlineCount = Winline.count(session.winlines);
         uint256 payoutWad = 0;
 
         // Add a third of the users bet to the jackpot
-        jackpot += (session.betWad * winlineCount) / 3;
+        _jackpot += (session.betWad * winlineCount) / 3;
 
         for (uint256 i = 0; i < winlineCount; i++) {
             (uint256 symbol, uint256 count) = checkWinline(board, Winline.parseWinline(session.winlines, i));
@@ -95,8 +91,8 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
                 if (symbol == 6) {
                     // Roll for a jackpot value
                     uint256 jackpotMultiplier = Board.numToSymbol((randomness >> i % 16) % 82);
-                    uint256 jackpotOut = jackpot / (3 - jackpotMultiplier + 1);
-                    jackpot -= jackpotOut;
+                    uint256 jackpotOut = _jackpot / (3 - jackpotMultiplier + 1);
+                    _jackpot -= jackpotOut;
                     payoutWad += session.betWad * (((symbol + 1) * (count - 2)) + jackpotOut);
                 } else {
                     // Symbol + 1, as the symbol is from 0-6. The Symbols apply a flat multiplier:
@@ -118,7 +114,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
         // Change the current user requests to 0, signifying they no longer have a bet active
         requests[session.user] = 0;
-        emit BetFulfilled(session.user, board, jackpot);
+        emit BetFulfilled(session.user, board, _jackpot);
     }
 
     function checkWinline(uint256 board, uint256 winline) internal pure returns(uint256, uint256) {
@@ -142,5 +138,13 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     function getFromBoard(uint256 board, uint256 row, uint256 index) internal pure returns (uint256 out) {
         out = Board.get(board, row, index);
         require(out < 7, "Invalid number parsed from board for this contract");
+    }
+
+    function jackpot() external view returns (uint256) {
+        return _jackpot;
+    }
+
+    function hasSession() external view returns (bool) {
+        return requests[msg.sender] != 0;
     }
 }

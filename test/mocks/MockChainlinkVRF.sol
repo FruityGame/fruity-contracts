@@ -8,12 +8,12 @@ contract MockChainlinkVRF is VRFCoordinatorV2Interface {
     uint256 public requestId = 0;
     address request;
 
-    function fulfill(uint256 randomness) external {
+    function fulfill(uint256 randomness, uint256 _requestId) external {
         uint256[] memory words = new uint256[](1);
         words[0] = randomness;
 
         (bool success, ) = request.call(
-            abi.encodeWithSelector(VRFConsumerBaseV2.rawFulfillRandomWords.selector, requestId, words)
+            abi.encodeWithSelector(VRFConsumerBaseV2.rawFulfillRandomWords.selector, _requestId, words)
         );
 
         require(success, "VRF Callback failed");
