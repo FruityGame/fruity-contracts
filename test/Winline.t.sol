@@ -40,4 +40,19 @@ contract WinlineTest is Test {
         assertEq(symbol2, 1);
         assertEq(count2, 4);
     }
+
+    function testParseWinlineInvalid() public {
+        vm.expectRevert("Invalid winline provided");
+        Winline.check(0, 0, 0);
+    }
+
+    function testParseWinlineInvalidIndex() public {
+        vm.expectRevert("Invalid index provided");
+        Winline.check(0, WINLINE_STUB, 25);
+    }
+
+    function testParseWinlineInvalidBoard() public {
+        vm.expectRevert("Invalid number parsed from board for this Winline library");
+        Winline.check(MAX_INT, WINLINE_STUB, 0);
+    }
 }
