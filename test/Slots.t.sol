@@ -98,20 +98,78 @@ contract SlotsTest is Test {
         assertEq(slots.jackpot(), 333333333333333333);
     }
 
+    function testCancelBet() public {
+        uint256 bet = 1 * (10 ** 18);
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+
+        // Ensure our bet has been added to the slots correctly
+        assertEq(address(slots).balance, bet);
+
+        // Cancel our bet
+        slots.cancelBet(betId);
+
+        // In a real world scenario, the chainlink VRF callback would fail to resolve,
+        // as we no longer have an active sessionId to resolve
+        vm.expectRevert("VRF Callback failed");
+        vrf.fulfill(MAX_INT, betId);
+
+        // Ensure we've not been charged for the VRF Fulfillment and have
+        // successfully been reimbursed
+        assertEq(address(this).balance, 100 * (10 ** 18));
+        assertEq(address(slots).balance, 0);
+        assertEq(slots.jackpot(), 0);
+    }
+
+    function testCancelBetAlreadyFulfilledBet() public {
+        uint256 bet = 1 * (10 ** 18);
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+        vrf.fulfill(MAX_INT, betId);
+
+        // Attempt to cancel with no active bet
+        vm.expectRevert("Cannot cancel already fulfilled bet");
+        slots.cancelBet(betId);
+
+        // Ensure we've not been credited a balance by some invariant
+        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(slots).balance, bet);
+        assertEq(slots.jackpot(), 333333333333333333);
+    }
+
+    function testCancelBetInvalidUser() public {
+        uint256 bet = 1 * (10 ** 18);
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+
+        // Ensure our bet has been added to the slots correctly
+        assertEq(address(slots).balance, bet);
+
+        // Attempt to cancel our bet with a different address
+        vm.expectRevert("Invalid session requested for user");
+        vm.prank(address(0));
+        slots.cancelBet(betId);
+
+        // Fulfill the bet
+        vrf.fulfill(MAX_INT, betId);
+
+        // Ensure we've not been charged for the VRF Fulfillment and have
+        // successfully been reimbursed
+        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(slots).balance, bet);
+        assertEq(slots.jackpot(), 333333333333333333);
+    }
+
     // Simulate a situation in which the VRF returns an old session ID for a user
     function testPlaceBetInvalidSessionId() public {
         uint256 bet = 1 * (10 ** 18);
 
-        // Immediately place and withdraw our bet
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-        slots.withdrawBet();
+        // Immediately place and cancel our bet
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+        slots.cancelBet(betId);
 
         // Place another bet, simulate a theoretical scenario in which the VRF
         // returns for a previous session
-        uint256 previousRequestId = vrf.requestId();
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
         vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, previousRequestId);
+        vrf.fulfill(MAX_INT, betId);
 
         // We still have an active bet, so verify that our deposit is still there
         assertEq(address(this).balance, 100 * (10 ** 18) - bet);
@@ -127,114 +185,24 @@ contract SlotsTest is Test {
         assertEq(slots.jackpot(), 333333333333333333);
     }
 
-    function testPlaceBetAlreadyActiveBet() public {
-        uint256 bet = 1 * (10 ** 18);
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-
-        // Try to place another bet while one is already active
-        vm.expectRevert("User already has a bet active");
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-
-        // VRF Response, fulfill the already active bet
-        vrf.fulfill(MAX_INT, vrf.requestId());
-
-        // Ensure we've only been charged for one bet, jackpot updated
-        // accordingly
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
-        assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
-    }
-
-    function testWithdrawBet() public {
-        uint256 bet = 1 * (10 ** 18);
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-
-        // Ensure our bet has been added to the slots correctly
-        assertEq(address(slots).balance, bet);
-
-        // Withdraw our bet
-        slots.withdrawBet();
-
-        // This needs to be done as expectRevert applies to the first function
-        // evaluated/executed in the following expression
-        uint256 id = vrf.requestId();
-        // In a real world scenario, the chainlink VRF callback would fail to resolve,
-        // as we no longer have an active sessionId to resolve
-        vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, id);
-
-        // Ensure we've not been charged for the VRF Fulfillment and have
-        // successfully been reimbursed
-        assertEq(address(this).balance, 100 * (10 ** 18));
-        assertEq(address(slots).balance, 0);
-        assertEq(slots.jackpot(), 0);
-    }
-
-    function testWithdrawBetNoActiveBet() public {
-        uint256 bet = 1 * (10 ** 18);
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-        vrf.fulfill(MAX_INT, vrf.requestId());
-
-        // Attempt to withdraw with no active bet
-        vm.expectRevert("No bet active for user");
-        slots.withdrawBet();
-
-        // Ensure we've not been credited a balance by some invariant
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
-        assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
-    }
-
-    function testFulfillWithdrawReentrancy() public {
+    function testFulfillCancelReentrancy() public {
         uint256 bet = 1 * (10 ** 18);
         // Setup our reentrancy contract. The contract attempts to call
-        // withdrawBet on the contract during the bet payout stage
-        MockSlotsWithdrawReentrancy maliciousContract = new MockSlotsWithdrawReentrancy();
+        // cancelBet on the contract during the bet payout stage
+        MockSlotsCancelReentrancy maliciousContract = new MockSlotsCancelReentrancy();
         deal(address(maliciousContract), 100 * (10 ** 18));
 
         // Set the caller address for this function invocation to be the
         // malicious contracts, as if the contract were calling to place a bet
         vm.prank(address(maliciousContract));
         // 1023 winline is a winning line for the board we've generated
-        slots.placeBet{value: bet}(bet, 1023);
+        uint256 betId = slots.placeBet{value: bet}(bet, 1023);
+        // Setup the malicious contract to attempt to cancel our betId with reentrancy
+        maliciousContract.setBetId(betId);
 
         // Ensure that the VRF Callback fails, due to reentrancy
-        uint256 id = vrf.requestId();
         vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, id);
-
-        // Ensure the user, even though they're malicious, still have their bet active,
-        // so it can still be withdrawn at a later date if need be. Ensure jackpot has not
-        // been incremented
-        assertEq(address(maliciousContract).balance, (100 * (10 ** 18)) - bet);
-        assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 0);
-    }
-
-    function testFulfillWithdrawBetReentrancy() public {
-        uint256 bet = 1 * (10 ** 18);
-        // Setup our reentrancy contract. The contract attempts to call
-        // placeBet during the withdrawBet process between the VRF callback
-        MockSlotsWithdrawBetReentrancy maliciousContract = new MockSlotsWithdrawBetReentrancy();
-        deal(address(maliciousContract), 100 * (10 ** 18));
-
-        // Set the caller address for this function invocation to be the
-        // malicious contracts, as if the contract were calling to place a bet
-        vm.prank(address(maliciousContract));
-        // 1023 winline is a winning line for the board we've generated
-        slots.placeBet{value: bet}(bet, 1023);
-        
-        // Withdraw our current bet, the malicious contract will call
-        // placeBet on the slots contract with a smaller bet between the VRF response
-        // in an attempt to trick the slots contract
-        vm.expectRevert("Failed to withdraw bet");
-        vm.prank(address(maliciousContract));
-        slots.withdrawBet();
-
-        // Ensure that the VRF Callback fails, due to an invalid session
-        uint256 id = vrf.requestId();
-        vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, id);
+        vrf.fulfill(MAX_INT, betId);
 
         // Ensure the user, even though they're malicious, still have their bet active,
         // so it can still be withdrawn at a later date if need be. Ensure jackpot has not

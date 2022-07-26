@@ -16,15 +16,15 @@ struct Session {
     uint256 winlines;
 }
 
+uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
+
 contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     uint256 private _jackpot = 0;
 
-    // Mapping of user addresses to Chainlink RequestId's
-    mapping(address => uint256) private requests;
-    // Mapping of chainlink RequestId's to Winlines
+    // Mapping of chainlink RequestId's to User Sessions
     mapping(uint256 => Session) private sessions;
 
-    // Event to be consumed by end clients
+    event BetPlaced(address user, uint256 betId);
     event BetFulfilled(address user, uint256 board, uint256 __jackpot);
 
     constructor(
@@ -45,42 +45,38 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         _;
     }
 
-    modifier activeBet() {
-        require(requests[msg.sender] != 0, "No bet active for user");
-        _;
-    }
-
-    modifier noActiveBet() {
-        require(requests[msg.sender] == 0, "User already has a bet active");
-        _;
-    }
-
-    function placeBet(uint256 betWad, uint256 winlines) public payable noActiveBet() isValidBet(betWad) nonReentrant() {
+    function placeBet(uint256 betWad, uint256 winlines) public payable isValidBet(betWad) returns (uint256) {
         // Each winline applies a flat multiplier to the cost of the bet
         uint256 totalBet = betWad * Winline.count(winlines);
         require(msg.value >= totalBet, "Amount provided not enough to cover bet");
 
-        // Initiate a new VRF Request for the user, store RequestId for user
-        requests[msg.sender] = requestRandomness();
+        // Initiate a new VRF Request for the user
+        uint256 requestId = requestRandomness();
         // Create a new User session associated with the VRF RequestId for the user
         // directly using requests[msg.sender] is fine for gas as we just accessed it above
-        sessions[requests[msg.sender]] = Session(msg.sender, betWad, winlines);
+        sessions[requestId] = Session(msg.sender, betWad, winlines);
+        emit BetPlaced(msg.sender, requestId);
+        return requestId;
     }
 
     // Jackpot is only calculated and changed if the vrf fulfillment succeeds,
     // therefore we don't need to change its value in accordance with cancelling the bet
-    function withdrawBet() public activeBet() nonReentrant() {
+    function cancelBet(uint256 requestId) public nonReentrant() {
         // Get the currently active session for the sender
-        Session storage session = sessions[requests[msg.sender]];
+        Session storage session = sessions[requestId];
+        // Ensure the session has not already been resolved/consumed
+        require(session.winlines & WINLINE_SESSION_FLAG == 0, "Cannot cancel already fulfilled bet");
+        // Ensure the user is the owner of the Session
+        require(session.user == msg.sender, "Invalid session requested for user");
         // All methods of this contract are protected from reentrancy, therefore
         // changing requests AFTER the call to transfer the funds is okay
         (bool success, ) = session.user.call{
             value: session.betWad * Winline.count(session.winlines)
         } ("");
-        require(success, "Failed to withdraw bet");
+        require(success, "Failed to cancel bet");
 
-        // Nullify the users VRF Request, terminating their bet (only if the payment succeeds)
-        requests[msg.sender] = 0;
+        // Terminate their bet (only if the payment succeeds)
+        session.winlines |= WINLINE_SESSION_FLAG;
     }
 
     function fulfillRandomness(uint256 id, uint256 randomness) internal override nonReentrant() {
@@ -89,7 +85,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
         // Ensure we're only processing the user's currently active bet, signifying they haven't
         // modified or cancelled the bet whilst we were waiting on the VRF Callback
-        require(requests[session.user] == id, "Invalid VRF RequestID Received");
+        require(session.winlines & WINLINE_SESSION_FLAG == 0, "User Session has already been resolved");
 
         uint256 board = Board.generate(randomness);
         uint256 winlineCount = Winline.count(session.winlines);
@@ -135,8 +131,8 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
             require(sent, "Failed to payout win");
         }
 
-        // Change the current user requests to 0, signifying they no longer have a bet active
-        requests[session.user] = 0;
+        // Resolve the users session, meaning they can no longer cancel the bet
+        session.winlines |= WINLINE_SESSION_FLAG;
         emit BetFulfilled(session.user, board, _jackpot);
     }
 
@@ -168,9 +164,5 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
     function jackpot() external view returns (uint256) {
         return _jackpot;
-    }
-
-    function hasSession() external view returns (bool) {
-        return requests[msg.sender] != 0;
     }
 }
