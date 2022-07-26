@@ -57,7 +57,7 @@ contract SlotsTest is Test {
         assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
         // In WEI, should equal 0.333333333333333333 Ether
-        assertEq(slots.jackpot(), 333333333333333333);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testPlaceBetInvalidAmountForWinlines() public {
@@ -69,7 +69,7 @@ contract SlotsTest is Test {
 
         assertEq(address(this).balance, 100 * (10 ** 18));
         assertEq(address(slots).balance, 0);
-        assertEq(slots.jackpot(), 0);
+        assertEq(slots.jackpotWad(), 0);
     }
 
     function testPlaceBetTooSmall() public {
@@ -79,7 +79,7 @@ contract SlotsTest is Test {
 
         assertEq(address(this).balance, 100 * (10 ** 18));
         assertEq(address(slots).balance, 0);
-        assertEq(slots.jackpot(), 0);
+        assertEq(slots.jackpotWad(), 0);
     }
 
     function testPlaceBetInvalidIntoValid() public {
@@ -95,7 +95,7 @@ contract SlotsTest is Test {
 
         assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testCancelBet() public {
@@ -117,7 +117,7 @@ contract SlotsTest is Test {
         // successfully been reimbursed
         assertEq(address(this).balance, 100 * (10 ** 18));
         assertEq(address(slots).balance, 0);
-        assertEq(slots.jackpot(), 0);
+        assertEq(slots.jackpotWad(), 0);
     }
 
     function testCancelBetAlreadyFulfilledBet() public {
@@ -132,7 +132,7 @@ contract SlotsTest is Test {
         // Ensure we've not been credited a balance by some invariant
         assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testCancelBetInvalidUser() public {
@@ -154,7 +154,7 @@ contract SlotsTest is Test {
         // successfully been reimbursed
         assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     // Simulate a situation in which the VRF returns an old session ID for a user
@@ -174,7 +174,7 @@ contract SlotsTest is Test {
         // We still have an active bet, so verify that our deposit is still there
         assertEq(address(this).balance, 100 * (10 ** 18) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 0);
+        assertEq(slots.jackpotWad(), 0);
 
         // Valid VRF fulfillment for the current user's bet:requestId
         vrf.fulfill(MAX_INT, vrf.requestId());
@@ -182,7 +182,7 @@ contract SlotsTest is Test {
         // Jackpot has now been taken, successful
         assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 333333333333333333);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testFulfillCancelReentrancy() public {
@@ -209,6 +209,6 @@ contract SlotsTest is Test {
         // been incremented
         assertEq(address(maliciousContract).balance, (100 * (10 ** 18)) - bet);
         assertEq(address(slots).balance, bet);
-        assertEq(slots.jackpot(), 0);
+        assertEq(slots.jackpotWad(), 0);
     }
 }

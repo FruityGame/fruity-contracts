@@ -13,14 +13,12 @@ abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
 
     bytes32 private immutable keyHash;
     uint64 private immutable subscriptionId;
-    address private immutable owner;
 
     constructor(
         address _coordinator,
         address _link,
         bytes32 _keyHash,
-        uint64 _subscriptionId,
-        address _owner
+        uint64 _subscriptionId
     )
         VRFConsumerBaseV2(_coordinator)
     {
@@ -28,7 +26,6 @@ abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
         link = LinkTokenInterface(_link);
         keyHash = _keyHash;
         subscriptionId = _subscriptionId;
-        owner = _owner;
     }
 
     function requestRandomness() internal override returns (uint256) {
