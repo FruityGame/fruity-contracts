@@ -93,12 +93,16 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
             // If we have 3 or more symbols matched
             if (count > 2) {
                 // If the symbol is a 7 (or jackpot symbol, pick your poison)
-                if (symbol == 6) {
-                    // Roll for a jackpot value
-                    uint256 jackpotMultiplier = Board.numToSymbol((randomness >> i % 16) % 82);
-                    uint256 jackpotOut = _jackpot / (3 - jackpotMultiplier + 1);
+                // ensure jackpot > 0 too, to avoid subtraction overflows
+                if (symbol == 6 && _jackpot > 0) {
+                    // Roll for a jackpot value, between 0 and 2
+                    uint256 jackpotMultiplier = Board.numToSymbol((randomness >> i % 16) % 68);
+                    // Max(jackpotMultiplier + 1) is 3. 5 - 3 means at max, a user can win up to half of the jackpot.
+                    uint256 jackpotOut = _jackpot / (5 - jackpotMultiplier + 1);
+                    // Subtract jackpot winnings from jackpot
                     _jackpot -= jackpotOut;
-                    payoutWad += session.betWad * (((symbol + 1) * (count - 2)) + jackpotOut);
+                    // As per logic in below comment, calculate payout for symbols + jackpot on the end
+                    payoutWad += (session.betWad * ((symbol + 1) * (count - 2))) + jackpotOut;
                 } else {
                     // Symbol + 1, as the symbol is from 0-6. The Symbols apply a flat multiplier:
                     // the higher the symbol value, the rarer the symbol and the higher the payout multiplier
