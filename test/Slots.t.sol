@@ -45,7 +45,7 @@ contract SlotsTest is Test {
     }
 
     function testCheckWinlineInvalidBoard() public {
-        vm.expectRevert("Invalid number parsed from board for this contract");
+        vm.expectRevert("Invalid symbol parsed from board for this contract");
         slots.checkWinlineExternal(MAX_INT, WINLINE_STUB);
     }
 
