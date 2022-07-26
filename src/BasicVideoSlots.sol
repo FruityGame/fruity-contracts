@@ -39,7 +39,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     ) {}
 
     modifier isValidBet(uint256 betWad) {
-        require(betWad > 1000000000000000, "Bet must be at least 1000000 Gwei");
+        require(betWad >= 1000000000000000, "Bet must be at least 1000000 Gwei");
         _;
     }
 

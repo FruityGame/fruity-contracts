@@ -60,7 +60,7 @@ contract SlotsTest is Test {
         assertEq(slots.jackpot(), 333333333333333333);
     }
 
-    function testPlaceBetInvalidAmount() public {
+    function testPlaceBetInvalidAmountForWinlines() public {
         uint256 bet = 1 * (10 ** 18);
         // Pass in two winlines
         vm.expectRevert("Amount provided not enough to cover bet");
@@ -73,13 +73,12 @@ contract SlotsTest is Test {
     }
 
     function testPlaceBetTooSmall() public {
-        uint256 bet = (1 * (10 ** 6)) - 1;
+        uint256 bet = 1 * (10 ** 6);
         vm.expectRevert("Bet must be at least 1000000 Gwei");
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
         assertEq(address(this).balance, 100 * (10 ** 18));
         assertEq(address(slots).balance, 0);
-        // In WEI, should equal 0.333333333333333333 Ether
         assertEq(slots.jackpot(), 0);
     }
 
