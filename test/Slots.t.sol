@@ -195,8 +195,23 @@ contract SlotsTest is Test {
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
+    function testCancelBetRandomId() public {
+        uint256 bet = 1 * (10 ** 18);
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+
+        // Attempt to cancel our bet with a different address
+        vm.expectRevert("Cannot cancel already fulfilled bet");
+        slots.cancelBet(123);
+
+        // Ensure we've not been charged for the VRF Fulfillment and have
+        // successfully been reimbursed
+        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(slots).balance, bet);
+        assertEq(slots.jackpotWad(), 0);
+    }
+
     // Simulate a situation in which the VRF returns an old session ID for a user
-    function testPlaceBetInvalidSessionId() public {
+    function testFulfillInvalidSessionId() public {
         uint256 bet = 1 * (10 ** 18);
 
         // Immediately place and cancel our bet

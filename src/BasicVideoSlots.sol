@@ -27,7 +27,10 @@ struct SlotParams {
     uint256 minimumBetWad;
 }
 
+// Flag used to denote an active or fulfilled session
 uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
+// Subsequent mask for the max value of a winline, as per the above flag
+uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
 
 contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     uint256 public jackpotWad = 0;
@@ -71,6 +74,13 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
         // Initiate a new VRF Request for the user
         uint256 requestId = requestRandomness();
+        // Setup the WINLINE_SESSION_FLAG. This bit is set when a session is active,
+        // unset when a session is resolved. The logic is inverted as empty mappings in solidity
+        // map to 0. If using 1 as true and 0 as false, a user could potentially invoke a race condition
+        // between them cancelling the bet, and the VRF fulfillment.
+        // It's safe to reuse it in this way because it's impossible to ever get
+        // greater than 2**254 - 1 as the winlineCount value
+        winlineCount |= WINLINE_SESSION_FLAG;
         // Create a new User session associated with the VRF RequestId for the user
         // directly using requests[msg.sender] is fine for gas as we just accessed it above
         sessions[requestId] = Session(msg.sender, betWad, winlines, winlineCount);
@@ -84,18 +94,18 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         // Get the currently active session for the sender
         Session storage session = sessions[requestId];
         // Ensure the session has not already been resolved/consumed
-        require(session.winlineCount & WINLINE_SESSION_FLAG == 0, "Cannot cancel already fulfilled bet");
+        require(session.winlineCount & WINLINE_SESSION_FLAG == WINLINE_SESSION_FLAG, "Cannot cancel already fulfilled bet");
         // Ensure the user is the owner of the Session
         require(session.user == msg.sender, "Invalid session requested for user");
         // All methods of this contract are protected from reentrancy, therefore
         // changing requests AFTER the call to transfer the funds is okay
         (bool success, ) = session.user.call{
-            value: session.betWad * session.winlineCount
+            value: session.betWad * (session.winlineCount & WINLINE_COUNT_MASK) // Get with the mask to omit the session lock bit
         } ("");
         require(success, "Failed to cancel bet");
 
         // Terminate their bet (only if the payment succeeds)
-        session.winlineCount |= WINLINE_SESSION_FLAG;
+        session.winlineCount ^= WINLINE_SESSION_FLAG;
     }
 
     function fulfillRandomness(uint256 id, uint256 randomness) internal override nonReentrant() {
@@ -104,7 +114,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
         // Ensure we're only processing the user's currently active bet, signifying they haven't
         // modified or cancelled the bet whilst we were waiting on the VRF Callback
-        require(session.winlineCount & WINLINE_SESSION_FLAG == 0, "User Session has already been resolved");
+        require(session.winlineCount & WINLINE_SESSION_FLAG == WINLINE_SESSION_FLAG, "User Session has already been resolved");
 
         uint256 board = Board.generate(randomness, params.boardSize, params.symbolCount, params.payoutConstant);
         uint256 payoutWad = 0;
@@ -112,9 +122,10 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         // Add a third of the users bet to the jackpot. betWad cannot be less than
         // 1000000 Gwei, so the 'unchecked' (solidity 0.8, hah) multiplication into
         // division will be fine here
-        jackpotWad += (session.betWad * session.winlineCount) / 3;
-
-        for (uint256 i = 0; i < session.winlineCount; i++) {
+        jackpotWad += (session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)) / 3;
+        
+        // Get winlineCount with the mask to omit the the session lock bit
+        for (uint256 i = 0; i < (session.winlineCount & WINLINE_COUNT_MASK); i++) {
             (uint256 symbol, uint256 count) = checkWinline(
                 board,
                 Winline.parseWinline(session.winlines, i, params.rowSize)
@@ -146,7 +157,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         }
 
         // Resolve the users session, meaning they can no longer cancel the bet
-        session.winlineCount |= WINLINE_SESSION_FLAG;
+        session.winlineCount ^= WINLINE_SESSION_FLAG;
         emit BetFulfilled(session.user, board, jackpotWad);
     }
 
