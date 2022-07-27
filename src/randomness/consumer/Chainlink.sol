@@ -39,7 +39,6 @@ abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
-        //require(msg.sender == address(coordinator), "Invalid VRF fulfill request");
         fulfillRandomness(requestId, randomWords[0]);
     }
 

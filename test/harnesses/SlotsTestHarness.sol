@@ -9,15 +9,25 @@ contract SlotsTestHarness is BasicVideoSlots {
         address coordinator,
         address link,
         bytes32 keyHash,
-        uint64 subscriptionId
+        uint64 subscriptionId,
+        SlotParams memory _params
     ) BasicVideoSlots (
         coordinator,
         link,
         keyHash,
-        subscriptionId
+        subscriptionId,
+        _params
     ) {}
 
-    function checkWinlineExternal(uint256 board, uint256 winline) external pure returns(uint256, uint256) {
+    function checkWinlineExternal(uint256 board, uint256 winline) external view returns(uint256, uint256) {
         return checkWinline(board, winline);
+    }
+
+    function countWinlinesExternal(uint256 winlines) external view returns (uint256 count) {
+        return countWinlines(winlines);
+    }
+
+    function fulfillRandomnessExternal(uint256 randomness, uint256 id) external {
+        return fulfillRandomness(id, randomness);
     }
 }

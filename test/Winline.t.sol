@@ -3,6 +3,7 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/libraries/Winline.sol";
+import "src/libraries/Board.sol";
 
 contract WinlineTest is Test {
     // 01|01|10|10|01
@@ -11,18 +12,14 @@ contract WinlineTest is Test {
 
     function setUp() public virtual {}
 
-    function constructWinline(uint256 len) internal pure returns (uint256 out) {
+    function constructWinline(uint256 len, uint256 rowSize) internal view returns (uint256 out) {
         if (len == 0) return 0;
 
-        out = (out << 10) | WINLINE_STUB;
+        uint256 shift = rowSize * 2;
+        uint256 mask = (1 << shift) - 1;
+        out = (out << shift) | (WINLINE_STUB & mask);
         for (uint256 i = 1; i < len; i++) {
-            out = (out << 10) | WINLINE_STUB;
-        }
-    }
-
-    function testCount() public {
-        for(uint256 i = 0; i <= 25; i++) {
-            assertEq(Winline.count(constructWinline(i)), i);
+            out = (out << shift) | (WINLINE_STUB & mask);
         }
     }
 
@@ -38,16 +35,25 @@ contract WinlineTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(Winline.InvalidWinlineNibble.selector, 0)
         );
-
         Winline.lineNibbleToRow(0);
+    
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineNibble.selector, 4)
+        );
+        Winline.lineNibbleToRow(4);
     }
 
     function testParseWinline() public {
-        assertEq(Winline.parseWinline(WINLINE_STUB, 0), WINLINE_STUB);
+        assertEq(Winline.parseWinline(WINLINE_STUB, 0, 5), WINLINE_STUB);
     }
 
     function testParseWinlineInvalidIndex() public {
         vm.expectRevert("Invalid index provided");
-        Winline.parseWinline(WINLINE_STUB, 25);
+        Winline.parseWinline(WINLINE_STUB, 25, 5);
+    }
+
+    function testParseWinlineInvalidSize() public {
+        vm.expectRevert("Invalid winline size provided");
+        Winline.parseWinline(WINLINE_STUB, 0, 0);
     }
 }

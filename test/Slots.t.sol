@@ -7,10 +7,14 @@ import "test/harnesses/SlotsTestHarness.sol";
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockSlotsReentrancy.sol";
 
+using stdStorage for StdStorage;
+
 contract SlotsTest is Test {
     // 01|01|10|10|01
     uint256 constant WINLINE_STUB = 361;
     uint256 constant internal MAX_INT = 2**256 - 1;
+    // Full set of Fruity 5x5 winlines
+    uint256 constant WINLINES_FULL = 536169616821538800036600934927570202961204380927034107000682;
     MockChainlinkVRF vrf;
     SlotsTestHarness slots;
 
@@ -23,30 +27,62 @@ contract SlotsTest is Test {
             address(vrf),
             address(0),
             bytes32(0),
-            0
+            0,
+            SlotParams(15, 5, 6, 95, 1000000000000000)
         );
 
         deal(address(this), 100 * (10 ** 18));
     }
 
     function testCheckWinline() public {
-        // 2:[0001|0001|0001|0000|0001] 1:[0010|0011|0100|0011|0011] 0:[0001|0000|0100|0011|0000]
-        uint256 board = Board.generate(MAX_INT);
+        // 2:[0000|0110|0010|0000|0100] 1:[0001|0000|0010|0000|0100] 0:[0001|0000|0011|0000|0101]
+        uint256 board = Board.generate(MAX_INT, 15, 6, 95);
         // 01|01|10|10|01
         // [row 0, index 4], [row 0, index 3], [row 1, index 2] [row 1, index 1] [row 0, index 0]
         (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(board, WINLINE_STUB);
         assertEq(symbol1, 0);
         assertEq(count1, 2);
 
-        // 1023 = 11|11|11|11|11
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, 1023);
-        assertEq(symbol2, 1);
-        assertEq(count2, 4);
+        // 853 = 11|01|01|01|01
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, 853);
+        assertEq(symbol2, 0);
+        assertEq(count2, 3);
     }
 
     function testCheckWinlineInvalidBoard() public {
         vm.expectRevert("Invalid symbol parsed from board for this contract");
         slots.checkWinlineExternal(MAX_INT, WINLINE_STUB);
+    }
+
+    function testCountWinlines() public {
+        assertEq(slots.countWinlinesExternal(WINLINES_FULL), 20);
+    }
+
+    function testCountWinlinesDuplicate() public {
+        uint256 duplicateWinline = (WINLINE_STUB << 10) | WINLINE_STUB;
+
+        vm.expectRevert("Duplicate winline detected");
+        slots.countWinlinesExternal(duplicateWinline);
+    }
+
+    function testPlaceBetGas() public {
+        uint256 bet = 1 * (10 ** 18);
+        slots.placeBet{value: bet}(bet, WINLINE_STUB);
+    }
+
+    function testResolveBetGas() public {
+        uint256 bet = 1 * (10 ** 18);
+        vrf.fulfill(MAX_INT, slots.placeBet{value: bet}(bet, WINLINE_STUB));
+    }
+
+    function testPlaceBetLargestGas() public {
+        uint256 bet = 1 * (10 ** 18);
+        slots.placeBet{value: bet * 20}(bet, WINLINES_FULL);
+    }
+
+    function testResolveBetLargestGas() public {
+        uint256 bet = 1 * (10 ** 18);
+        vrf.fulfill(MAX_INT, slots.placeBet{value: bet * 20}(bet, WINLINES_FULL));
     }
 
     function testPlaceBet() public {
@@ -74,7 +110,9 @@ contract SlotsTest is Test {
 
     function testPlaceBetTooSmall() public {
         uint256 bet = 1 * (10 ** 6);
-        vm.expectRevert("Bet must be at least 1000000 Gwei");
+        vm.expectRevert(
+            abi.encodeWithSelector(BasicVideoSlots.BetTooSmall.selector, 1000000, 1000000000000000)
+        );
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
         assertEq(address(this).balance, 100 * (10 ** 18));
@@ -195,8 +233,8 @@ contract SlotsTest is Test {
         // Set the caller address for this function invocation to be the
         // malicious contracts, as if the contract were calling to place a bet
         vm.prank(address(maliciousContract));
-        // 1023 winline is a winning line for the board we've generated
-        uint256 betId = slots.placeBet{value: bet}(bet, 1023);
+        // 853 winline is a winning line for the board we've generated
+        uint256 betId = slots.placeBet{value: bet}(bet, 853);
         // Setup the malicious contract to attempt to cancel our betId with reentrancy
         maliciousContract.setBetId(betId);
 

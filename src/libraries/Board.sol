@@ -1,41 +1,77 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import "solmate/utils/FixedPointMathLib.sol";
+
+uint256 constant WAD = 1e18;
+
 library Board {
     uint256 constant MASK_4 = (0x1 << 4) - 1;
 
-    modifier rowInBounds(uint256 row) {
-        require(row < 3, "Row provided for query is out of bounds");
+    event TestEvent(uint256 out);
+
+    modifier sizeWithinBounds(uint256 boardSize) {
+        require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
         _;
     }
 
-    modifier indexInBounds(uint256 index) {
-        require(index < 5, "Index provided for query is out of bounds");
+    modifier symbolsWithinBounds(uint256 symbolCount) {
+        require(symbolCount > 0 && symbolCount <= 15, "Invalid number of symbols provided");
         _;
     }
 
-    function numToSymbol(uint256 result) public pure returns (uint256) {
-        if (result <= 33) return 0;
-        if (result <= 55) return 1;
-        if (result <= 68) return 2;
-        if (result <= 81) return 3;
-        if (result <= 89) return 4;
-        if (result <= 97) return 5;
-        return 6;
+    modifier payoutWithinBounds(uint256 payoutConstant) {
+        require(payoutConstant > 0 && payoutConstant <= 100, "Invalid payout constant provided");
+        _;
     }
 
-    function generate(uint256 entropy) external pure returns (uint256 out) {
-        out = numToSymbol(entropy % 101);
-        for (uint256 i = 0; i < 14; i++) {
-            out = (out << 4) | numToSymbol((entropy >> i * 16) % 101);
+    function divideWads(uint256 lhs, uint256 rhs) internal pure returns (uint256) {
+        return (lhs * WAD) / rhs;
+    }
+
+    function toWad(uint256 num) internal pure returns (uint256) {
+        return num * WAD;
+    }
+
+    function entropyToSymbol(uint256 entropy, uint256 symbolCountWad, uint256 payoutConstantWad) internal pure returns (uint256) {
+        // Roll a number from 1-100 inclusive
+        // symbolCount / ((payoutConstant / roll)^2)
+        // i.e. 6 / ((95 / roll) ^ 2)
+        uint256 curve = divideWads(
+            symbolCountWad,
+            FixedPointMathLib.rpow(
+                divideWads(payoutConstantWad, toWad((entropy % 100) + 1)),
+                2,
+                WAD
+            )
+        );
+
+        return curve / WAD;
+    }
+
+    function generate(uint256 entropy, uint256 boardSize, uint256 symbolCount, uint256 payoutConstant) internal pure
+        sizeWithinBounds(boardSize)
+        symbolsWithinBounds(symbolCount)
+        payoutWithinBounds(payoutConstant)
+    returns (uint256 out) {
+        if (boardSize == 0) return 0;
+
+        uint256 symbolCountWad = toWad(symbolCount);
+        uint256 payoutConstantWad = toWad(payoutConstant);
+
+        out |= entropyToSymbol(entropy, symbolCountWad, payoutConstantWad);
+        for (uint256 i = 1; i < boardSize; i++) {
+            out = (out << 4) | entropyToSymbol((entropy >> 4 * i) + i, symbolCountWad, payoutConstantWad);
         }
+
+        return out;
     }
 
-    function get(uint256 board, uint256 row, uint256 index) internal pure
-        rowInBounds(row)
-        indexInBounds(index)
-        returns (uint256)
-    {
-        return (board >> 20 * row + 4 * index) & MASK_4;
+    function get(uint256 board, uint256 index) internal pure returns (uint256) {
+        return (board >> 4 * index) & MASK_4;
+    }
+
+    function getWithRow(uint256 board, uint256 row, uint256 rowIndex, uint256 rowSize) internal pure returns (uint256) {
+        return get(board, (row * rowSize) + rowIndex);
     }
 }

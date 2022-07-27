@@ -9,7 +9,7 @@ contract MockSlotsCancelReentrancy {
     // Otherwise the call to pay the malicious contract in withdrawBet
     // could trigger the reentrancy guard and cause the test to pass, even
     // though the call to withdrawBet did succeed
-    bool private called = false;
+    bool public called = false;
 
     uint256 betId = 0;
 
