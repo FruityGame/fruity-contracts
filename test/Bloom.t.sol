@@ -25,6 +25,14 @@ contract WinlineTest is Test {
         assert(Bloom.contains(bloom, item));
     }
 
+    function testBloomFilterInsertChecked(bytes32 item) public {
+        uint256 bloom = 0;
+
+        bloom = Bloom.insertChecked(bloom, item);
+        vm.expectRevert("Duplicate item detected");
+        Bloom.insertChecked(bloom, item);
+    }
+
     // Test the bloom filter with random 5x5(25) winlines
     function testBloomFilterWithWinlines(bytes32 entropy) public {
         uint256 bloom = 0;

@@ -182,8 +182,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
         while(winlines & 3 != 0) {
             bytes32 entry = bytes32(Winline.parseWinline(winlines, 0, params.rowSize));
-            require(!Bloom.contains(bloom, entry), "Duplicate winline detected");
-            bloom = Bloom.insert(bloom, entry);
+            bloom = Bloom.insertChecked(bloom, entry);
             winlines = winlines >> (params.rowSize * 2);
             count += 1;
         }

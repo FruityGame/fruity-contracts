@@ -8,8 +8,6 @@ uint256 constant WAD = 1e18;
 library Board {
     uint256 constant MASK_4 = (0x1 << 4) - 1;
 
-    event TestEvent(uint256 out);
-
     modifier sizeWithinBounds(uint256 boardSize) {
         require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
         _;

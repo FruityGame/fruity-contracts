@@ -61,7 +61,7 @@ contract SlotsTest is Test {
     function testCountWinlinesDuplicate() public {
         uint256 duplicateWinline = (WINLINE_STUB << 10) | WINLINE_STUB;
 
-        vm.expectRevert("Duplicate winline detected");
+        vm.expectRevert("Duplicate item detected");
         slots.countWinlinesExternal(duplicateWinline);
     }
 
