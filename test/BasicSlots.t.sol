@@ -363,22 +363,22 @@ contract SlotsTest is Test {
         );
     }
 
-    /*function testWinRateNormalWinline() public {
+    function testWinRateNormalWinline() public {
         // 1 Ether
         uint256 bet = 1e18;
 
         // Start the slots off with 100 Ether
-        deal(address(slots), 100 * (10 ** 18));
+        deal(address(slots), 100 * 1e18);
 
         for (uint256 i = 0; i < 100; i++) {
-            uint256 randomness = uint256(keccak256(abi.encodePacked(i)));
+            uint256 randomness = uint256(keccak256(abi.encodePacked(uint256(0x5e7cd49cf), i)));
             slots.fulfillRandomnessExternal(randomness, slots.placeBet{value: bet}(bet, 682));
         }
 
         emit log_uint(slots.jackpotWad() / 1e18);
         emit log_uint(address(slots).balance / 1e18);
         emit log_uint(address(this).balance / 1e18);
-    }*/
+    }
 
     /*function testWinRateRandomWinlines() public {
         // 0.01 Ether

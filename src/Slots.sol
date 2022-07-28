@@ -31,8 +31,8 @@ struct SlotParams {
 uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
 // Subsequent mask for the max value of a winline, as per the above flag
 uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
-// Odds of winning the jackpot can be seen as 1/32767
-uint256 constant JACKPOT_WIN_MASK = (1 << 15) - 1;
+// Odds of winning the jackpot can be seen as 1/16383
+uint256 constant JACKPOT_WIN_MASK = (1 << 14) - 1;
 
 abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
     SlotParams public params;
@@ -164,7 +164,10 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
                 // 3 symbols: 1x multiplier
                 // 4 symbols: 2x multiplier
                 // 5 symbols: 3x multiplier
-                payoutWad += session.betWad * ((2 * (symbol + 1)) * (count - (params.rowSize / 2)));
+                payoutWad += session.betWad * (
+                    ((symbol + 1) * 2) *
+                    (count - (params.rowSize / 2))
+                );
             }
         }
 
