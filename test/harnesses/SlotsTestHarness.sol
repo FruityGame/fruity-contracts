@@ -2,25 +2,19 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "src/BasicVideoSlots.sol";
+import "src/BasicSlots.sol";
 
-contract SlotsTestHarness is BasicVideoSlots {
+contract SlotsTestHarness is BasicSlots {
+    uint256 expectedSpecialSymbol = 0;
+
     constructor(
-        address coordinator,
-        address link,
-        bytes32 keyHash,
-        uint64 subscriptionId,
+        VRFParams memory vrfParams,
         SlotParams memory _params,
-        uint8[] memory specialSymbols,
-        address specialSymbolsResolver
-    ) BasicVideoSlots (
-        coordinator,
-        link,
-        keyHash,
-        subscriptionId,
+        uint8[] memory specialSymbols
+    ) BasicSlots (
+        vrfParams,
         _params,
-        specialSymbols,
-        specialSymbolsResolver
+        specialSymbols
     ) {}
 
     function checkWinlineExternal(uint256 board, uint256 winline) external view returns(uint256, uint256) {
@@ -33,5 +27,9 @@ contract SlotsTestHarness is BasicVideoSlots {
 
     function fulfillRandomnessExternal(uint256 randomness, uint256 id) external {
         return fulfillRandomness(id, randomness);
+    }
+
+    function setExpectedSpecialSymbol(uint256 symbol) external {
+        expectedSpecialSymbol = symbol;
     }
 }

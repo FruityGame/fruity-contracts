@@ -18,14 +18,14 @@ contract WinlineTest is Test {
         out = (out << 2) | ((((entropy >> 16) % 3) + 1) & 3);
     }
 
-    function testBloomFilterSingleItem(bytes32 item) public {
+    function testBloomFilterSingleItemFuzz(bytes32 item) public {
         uint256 bloom = 0;
 
         bloom = Bloom.insert(bloom, item);
         assert(Bloom.contains(bloom, item));
     }
 
-    function testBloomFilterInsertChecked(bytes32 item) public {
+    function testBloomFilterInsertCheckedFuzz(bytes32 item) public {
         uint256 bloom = 0;
 
         bloom = Bloom.insertChecked(bloom, item);
@@ -34,7 +34,7 @@ contract WinlineTest is Test {
     }
 
     // Test the bloom filter with random 5x5(25) winlines
-    function testBloomFilterWithWinlines(bytes32 entropy) public {
+    function testBloomFilterWinlineFuzz(bytes32 entropy) public {
         uint256 bloom = 0;
         uint256 falsePositives = 0;
         uint256[] memory winlines = new uint256[](25);

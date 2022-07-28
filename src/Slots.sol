@@ -6,7 +6,6 @@ import "src/libraries/Winline.sol";
 import "src/libraries/Board.sol";
 import "src/libraries/Bloom.sol";
 import "src/randomness/consumer/Chainlink.sol";
-import "src/SpecialSymbolsResolver.sol";
 
 // A 'Session' is a potentially active user request,
 // containing their address, bet, and winlines. To
@@ -20,10 +19,11 @@ struct Session {
 
 // Params for the slot machine
 struct SlotParams {
-    uint64 boardSize;
-    uint64 rowSize;
+    uint32 boardSize;
+    uint32 rowSize;
     uint64 symbolCount;
     uint64 payoutConstant;
+    uint64 payoutBottomLine;
     uint256 minimumBetWad;
 }
 
@@ -31,13 +31,14 @@ struct SlotParams {
 uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
 // Subsequent mask for the max value of a winline, as per the above flag
 uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
+// Odds of winning the jackpot can be seen as 1/32767
+uint256 constant JACKPOT_WIN_MASK = (1 << 15) - 1;
 
-contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
-    SpecialSymbolsResolver private specialSymbolsResolver;
-    uint256 private specialSymbols = 0;
-    uint256 public jackpotWad = 0;
+abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
     SlotParams public params;
 
+    uint256 public jackpotWad = 0;
+    uint256 private specialSymbols = 0;
     // Mapping of chainlink RequestId's to User Sessions
     mapping(uint256 => Session) private sessions;
 
@@ -52,27 +53,23 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     }
 
     constructor(
-        address coordinator,
-        address link,
-        bytes32 keyHash,
-        uint64 subscriptionId,
+        VRFParams memory vrfParams,
         SlotParams memory _params,
-        uint8[] memory _specialSymbols,
-        address _specialSymbolsResolver
+        uint8[] memory _specialSymbols
     ) RandomnessConsumer(
-        coordinator,
-        link,
-        keyHash,
-        subscriptionId
+        vrfParams
     ) {
         require(_specialSymbols.length <= 15, "Invalid number of special symbols provided");
         for (uint256 i = 0; i < _specialSymbols.length; i++) {
             specialSymbols = Bloom.insertChecked(specialSymbols, bytes32(uint256(_specialSymbols[i])));
         }
 
-        specialSymbolsResolver = SpecialSymbolsResolver(specialSymbolsResolver);
         params = _params;
     }
+
+    function payout(address user, uint256 payoutWad) internal virtual returns (bool) {}
+    function refund(address user, uint256 refundWad) internal virtual returns (bool) {}
+    function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal virtual {}
 
     function placeBet(uint256 betWad, uint256 winlines) public payable
         isValidBet(betWad)
@@ -109,10 +106,8 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         require(session.user == msg.sender, "Invalid session requested for user");
         // All methods of this contract are protected from reentrancy, therefore
         // changing requests AFTER the call to transfer the funds is okay
-        (bool success, ) = session.user.call{
-            value: session.betWad * (session.winlineCount & WINLINE_COUNT_MASK) // Get with the mask to omit the session lock bit
-        } ("");
-        require(success, "Failed to cancel bet");
+        // Get with the mask to omit the session lock bit
+        require(refund(session.user, session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)), "Failed to cancel bet");
 
         // Terminate their bet (only if the payment succeeds)
         session.winlineCount ^= WINLINE_SESSION_FLAG;
@@ -126,12 +121,16 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         // modified or cancelled the bet whilst we were waiting on the VRF Callback
         require(session.winlineCount & WINLINE_SESSION_FLAG == WINLINE_SESSION_FLAG, "User Session has already been resolved");
 
-        uint256 board = Board.generate(randomness, params.boardSize, params.symbolCount, params.payoutConstant);
+        uint256 board = Board.generate(randomness,
+            params.boardSize,
+            params.symbolCount,
+            params.payoutConstant,
+            params.payoutBottomLine
+        );
         uint256 payoutWad = 0;
 
-        // Add a third of the users bet to the jackpot. betWad cannot be less than
-        // 1000000 Gwei, so the 'unchecked' (solidity 0.8, hah) multiplication into
-        // division will be fine here
+        // Add a third of the users bet to the jackpot, provided minimumBetWad has been configured,
+        // this should not overflow
         jackpotWad += (session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)) / 3;
         
         // Get winlineCount with the mask to omit the the session lock bit
@@ -143,15 +142,16 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
             // If we have 1/2 of the symbols matched
             if (count > params.rowSize / 2) {
                 // If the symbol is a jackpot symbol, and we rolled a jackpot:
-                if (symbol == params.symbolCount && ((randomness >> 2 * (i % 16)) + i) % 32 > 28) {
+                // ((randomness >> 2 * (i % 16)) + i) % 32 > 28)
+                if (symbol == params.symbolCount && (randomness & JACKPOT_WIN_MASK) ^ JACKPOT_WIN_MASK == 0){
                     // This add is fine re: overflows, as jackpot is set to 0 immediately after
-                    payoutWad += resolveJackpot();
+                    payoutWad += jackpotWad;
+                    jackpotWad = 0;
                 }
 
                 // Resolve any special symbols we encountered
                 if (specialSymbols != 0 && Bloom.contains(specialSymbols, bytes32(symbol))) {
-                    // Forward on our session variables
-                    specialSymbolsResolver.resolveSpecialSymbols(symbol, count, params.rowSize);
+                    resolveSpecialSymbols(symbol, count, board);
                 }
 
                 // We do Symbol + 1, as the symbol is from 0-6.
@@ -161,25 +161,17 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
                 // 3 symbols: 1x multiplier
                 // 4 symbols: 2x multiplier
                 // 5 symbols: 3x multiplier
-                payoutWad += session.betWad * ((symbol + 1) * (count - (params.rowSize / 2)));
+                payoutWad += session.betWad * ((2 * (symbol + 1)) * (count - (params.rowSize / 2)));
             }
         }
 
-        // Attempt to pay the user, revert if the payment failed
-        // Again, we're protected against reentrancy
         if (payoutWad > 0) {
-            (bool sentPayout, ) = session.user.call{value: payoutWad}("");
-            require(sentPayout, "Failed to payout win");
+            require(payout(session.user, payoutWad), "Failed to payout win");
         }
 
         // Resolve the users session, meaning they can no longer cancel the bet
         session.winlineCount ^= WINLINE_SESSION_FLAG;
         emit BetFulfilled(session.user, board, jackpotWad);
-    }
-
-    function resolveJackpot() internal returns (uint256 out) {
-        out = jackpotWad;
-        jackpotWad = 0;
     }
 
     function checkWinline(uint256 board, uint256 winline) internal view returns(uint256, uint256) {

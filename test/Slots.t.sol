@@ -3,16 +3,15 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/libraries/Board.sol";
-import "src/SpecialSymbolsResolver.sol";
+import "src/Slots.sol";
 import "test/harnesses/SlotsTestHarness.sol";
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockSlotsReentrancy.sol";
-import "test/mocks/MockSpecialSymbolsResolver.sol";
 
 contract SlotsTest is Test {
     // 01|01|10|10|01
     uint256 constant WINLINE_STUB = 361;
-    uint256 constant internal MAX_INT = 2**256 - 1;
+    uint256 constant internal WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(255))));
     // Full set of Fruity 5x5 winlines
     uint256 constant WINLINES_FULL = 536169616821538800036600934927570202961204380927034107000682;
     MockChainlinkVRF vrf;
@@ -22,43 +21,39 @@ contract SlotsTest is Test {
     fallback() external payable {}
 
     function setUp() public virtual {
-        //uint8[16] memory specialSymbols = new uint8[16]();
-        MockSpecialSymbolsResolver ssr = new MockSpecialSymbolsResolver();
         vrf = new MockChainlinkVRF();
         slots = new SlotsTestHarness(
-            address(vrf),
-            address(0),
-            bytes32(0),
-            0,
-            SlotParams(15, 5, 6, 95, 1000000000000000),
-            new uint8[](0),
-            address(ssr)
+            VRFParams(address(vrf), address(0), bytes32(0), 0),
+            SlotParams(15, 5, 6, 115, 20, 1e15),
+            new uint8[](0)
         );
 
-        deal(address(this), 100 * (10 ** 18));
+        deal(address(this), 100 * 1e18);
     }
 
+    // Ensure our winline function is parsing symbols as expected
     function testCheckWinline() public {
-        // 2:[0000|0110|0010|0000|0100] 1:[0001|0000|0010|0000|0100] 0:[0001|0000|0011|0000|0101]
-        uint256 board = Board.generate(MAX_INT, 15, 6, 95);
+        // 2: [0100|0001|0100|0000|0011] 1: [0001|0000|0010|0100|0011] 0: [0001|0100|0010|0110|0011]
+        uint256 board = Board.generate(WINNING_ENTROPY, 15, 6, 115, 20);
         // 01|01|10|10|01
         // [row 0, index 4], [row 0, index 3], [row 1, index 2] [row 1, index 1] [row 0, index 0]
         (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(board, WINLINE_STUB);
         assertEq(symbol1, 0);
-        assertEq(count1, 2);
+        assertEq(count1, 0);
 
-        // 853 = 11|01|01|01|01
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, 853);
-        assertEq(symbol2, 0);
-        assertEq(count2, 3);
+        // 853 = 11|01|11|10|10
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, 890);
+        assertEq(symbol2, 4);
+        assertEq(count2, 4);
     }
 
     function testCheckWinlineInvalidBoard() public {
         vm.expectRevert("Invalid symbol parsed from board for this contract");
-        slots.checkWinlineExternal(MAX_INT, WINLINE_STUB);
+        slots.checkWinlineExternal(256**2 - 1, WINLINE_STUB);
     }
 
     function testCountWinlines() public {
+        // Count all 20 unique winlines for 5x5 slots
         assertEq(slots.countWinlinesExternal(WINLINES_FULL), 20);
     }
 
@@ -69,79 +64,68 @@ contract SlotsTest is Test {
         slots.countWinlinesExternal(duplicateWinline);
     }
 
-    function testPlaceBetGas() public {
-        uint256 bet = 1 * (10 ** 18);
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-    }
-
-    function testResolveBetGas() public {
-        uint256 bet = 1 * (10 ** 18);
-        vrf.fulfill(MAX_INT, slots.placeBet{value: bet}(bet, WINLINE_STUB));
-    }
-
-    function testPlaceBetLargestGas() public {
-        uint256 bet = 1 * (10 ** 18);
-        slots.placeBet{value: bet * 20}(bet, WINLINES_FULL);
-    }
-
-    function testResolveBetLargestGas() public {
-        uint256 bet = 1 * (10 ** 18);
-        vrf.fulfill(MAX_INT, slots.placeBet{value: bet * 20}(bet, WINLINES_FULL));
-    }
-
     function testPlaceBet() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
-        vrf.fulfill(MAX_INT, vrf.requestId());
+        vrf.fulfill(WINNING_ENTROPY, vrf.requestId());
 
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        // Ensure our bet has been taken and the jackpot incremented
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         // In WEI, should equal 0.333333333333333333 Ether
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testPlaceBetInvalidAmountForWinlines() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
         // Pass in two winlines
         vm.expectRevert("Amount provided not enough to cover bet");
         slots.placeBet{value: bet}(bet, 349801);
-        vrf.fulfill(MAX_INT, vrf.requestId());
+        vrf.fulfill(WINNING_ENTROPY, vrf.requestId());
 
-        assertEq(address(this).balance, 100 * (10 ** 18));
+        // Ensure parity of balances
+        assertEq(address(this).balance, 100 * 1e18);
         assertEq(address(slots).balance, 0);
         assertEq(slots.jackpotWad(), 0);
     }
 
     function testPlaceBetTooSmall() public {
-        uint256 bet = 1 * (10 ** 6);
+        uint256 bet = 1e6;
         vm.expectRevert(
-            abi.encodeWithSelector(BasicVideoSlots.BetTooSmall.selector, 1000000, 1000000000000000)
+            abi.encodeWithSelector(Slots.BetTooSmall.selector, 1e6, 1e15)
         );
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
-        assertEq(address(this).balance, 100 * (10 ** 18));
+        assertEq(address(this).balance, 100 * 1e18);
         assertEq(address(slots).balance, 0);
         assertEq(slots.jackpotWad(), 0);
     }
 
     function testPlaceBetInvalidIntoValid() public {
-        uint256 bet = 1 * (10 ** 18);
-        // Pass in two winlines, invalid value to cover
+        uint256 bet = 1e18;
+        // Pass in two winlines, invalid value to cover the cost
         vm.expectRevert("Amount provided not enough to cover bet");
         slots.placeBet{value: bet}(bet, 349801);
-        vrf.fulfill(MAX_INT, vrf.requestId());
+
+        // Ensure our balance remains the same
+        assertEq(address(this).balance, 100 * 1e18);
+        assertEq(address(slots).balance, 0);
+        assertEq(slots.jackpotWad(), 0);
 
         // Place a new bet after the failure
-        slots.placeBet{value: bet}(bet, WINLINE_STUB);
-        vrf.fulfill(MAX_INT, vrf.requestId());
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+        vrf.fulfill(WINNING_ENTROPY, betId);
 
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        // Ensure parity of balances
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testCancelBet() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
+
+        // Place our bet
         uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
         // Ensure our bet has been added to the slots correctly
@@ -152,71 +136,85 @@ contract SlotsTest is Test {
 
         // In a real world scenario, the chainlink VRF callback would fail to resolve,
         // as we no longer have an active sessionId to resolve
+        vm.expectRevert("User Session has already been resolved");
+        slots.fulfillRandomnessExternal(WINNING_ENTROPY, betId);
         vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, betId);
+        vrf.fulfill(WINNING_ENTROPY, betId);
 
         // Ensure we've not been charged for the VRF Fulfillment and have
         // successfully been reimbursed
-        assertEq(address(this).balance, 100 * (10 ** 18));
+        assertEq(address(this).balance, 100 * 1e18);
         assertEq(address(slots).balance, 0);
         assertEq(slots.jackpotWad(), 0);
     }
 
     function testCancelBetAlreadyFulfilledBet() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
         uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
-        vrf.fulfill(MAX_INT, betId);
+        vrf.fulfill(WINNING_ENTROPY, betId);
 
         // Attempt to cancel with no active bet
         vm.expectRevert("Cannot cancel already fulfilled bet");
         slots.cancelBet(betId);
 
         // Ensure we've not been credited a balance by some invariant
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     function testCancelBetInvalidUser() public {
-        uint256 bet = 1 * (10 ** 18);
-        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
+        uint256 bet = 1e18;
 
-        // Ensure our bet has been added to the slots correctly
-        assertEq(address(slots).balance, bet);
+        // Place a bet
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
         // Attempt to cancel our bet with a different address
         vm.expectRevert("Invalid session requested for user");
         vm.prank(address(0));
         slots.cancelBet(betId);
 
-        // Fulfill the bet
-        vrf.fulfill(MAX_INT, betId);
+        // Ensure balances are unchanged after failed cancel
+        assertEq(address(this).balance, (100 * 1e18) - bet);
+        assertEq(address(slots).balance, bet);
+        assertEq(slots.jackpotWad(), 0);
 
-        // Ensure we've not been charged for the VRF Fulfillment and have
-        // successfully been reimbursed
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        // Fulfill the bet
+        vrf.fulfill(WINNING_ENTROPY, betId);
+
+        // Ensure parity of balances
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
-    function testCancelBetRandomId() public {
-        uint256 bet = 1 * (10 ** 18);
+    function testCancelBetInvalidSessionId() public {
+        uint256 bet = 1e18;
+
+        // Place a bet
         uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
 
-        // Attempt to cancel our bet with a different address
+        // Attempt to cancel a complete or uninitialized bet
         vm.expectRevert("Cannot cancel already fulfilled bet");
         slots.cancelBet(123);
 
-        // Ensure we've not been charged for the VRF Fulfillment and have
-        // successfully been reimbursed
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        // Ensure parity of balances
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 0);
+
+        // Fulfill the bet
+        vrf.fulfill(WINNING_ENTROPY, betId);
+
+        // Ensure parity of balances
+        assertEq(address(this).balance, (100 * 1e18) - bet);
+        assertEq(address(slots).balance, bet);
+        assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
     // Simulate a situation in which the VRF returns an old session ID for a user
     function testFulfillInvalidSessionId() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
 
         // Immediately place and cancel our bet
         uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_STUB);
@@ -226,46 +224,155 @@ contract SlotsTest is Test {
         // returns for a previous session
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
         vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, betId);
+        vrf.fulfill(WINNING_ENTROPY, betId);
 
         // We still have an active bet, so verify that our deposit is still there
-        assertEq(address(this).balance, 100 * (10 ** 18) - bet);
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 0);
 
         // Valid VRF fulfillment for the current user's bet:requestId
-        vrf.fulfill(MAX_INT, vrf.requestId());
+        vrf.fulfill(WINNING_ENTROPY, vrf.requestId());
 
         // Jackpot has now been taken, successful
-        assertEq(address(this).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(this).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 333333333333333333);
     }
 
+    // This test tests for reentrancy from fulfillRandomness into cancelBet
+    // a scenario in which a user could attempt to cancel their bet during the payout
+    // to receive both the payout and their bet back
     function testFulfillCancelReentrancy() public {
-        uint256 bet = 1 * (10 ** 18);
+        uint256 bet = 1e18;
         // Setup our reentrancy contract. The contract attempts to call
         // cancelBet on the contract during the bet payout stage
         MockSlotsCancelReentrancy maliciousContract = new MockSlotsCancelReentrancy();
-        deal(address(maliciousContract), 100 * (10 ** 18));
+        deal(address(maliciousContract), 100 * 1e18);
 
         // Set the caller address for this function invocation to be the
         // malicious contracts, as if the contract were calling to place a bet
         vm.prank(address(maliciousContract));
-        // 853 winline is a winning line for the board we've generated
-        uint256 betId = slots.placeBet{value: bet}(bet, 853);
+        // 890 winline is a winning line for the board we've generated
+        uint256 betId = slots.placeBet{value: bet}(bet, 890);
         // Setup the malicious contract to attempt to cancel our betId with reentrancy
         maliciousContract.setBetId(betId);
 
         // Ensure that the VRF Callback fails, due to reentrancy
+        vm.expectRevert("Failed to payout win");
+        slots.fulfillRandomnessExternal(WINNING_ENTROPY, betId);
         vm.expectRevert("VRF Callback failed");
-        vrf.fulfill(MAX_INT, betId);
+        vrf.fulfill(WINNING_ENTROPY, betId);
 
         // Ensure the user, even though they're malicious, still have their bet active,
         // so it can still be withdrawn at a later date if need be. Ensure jackpot has not
         // been incremented
-        assertEq(address(maliciousContract).balance, (100 * (10 ** 18)) - bet);
+        assertEq(address(maliciousContract).balance, (100 * 1e18) - bet);
         assertEq(address(slots).balance, bet);
         assertEq(slots.jackpotWad(), 0);
     }
+
+    // This test tests for a reentrancy scenario in which a user could attempt to cancel their
+    // bet multiple times in succession with reentrancy, which would allow them to drain the contract
+    function testCancelSameBetReentrancy() public {
+        uint256 bet = 1e18;
+        // Setup our reentrancy contract. The contract calls
+        // cancelBet upon receiving funds
+        MockSlotsCancelReentrancy maliciousContract = new MockSlotsCancelReentrancy();
+        deal(address(maliciousContract), 100 * 1e18);
+
+        // Set the caller address for this function invocation to be the
+        // malicious contracts, as if the contract were calling to place a bet
+        vm.prank(address(maliciousContract));
+        // 890 winline is a winning line for the board we've generated
+        uint256 betId = slots.placeBet{value: bet}(bet, 890);
+        // Setup the malicious contract to attempt to cancel our second betID
+        maliciousContract.setBetId(betId);
+
+        // Cancel our bet, the contract will attempt to cancel the same bet when it receives() funds
+        vm.expectRevert("Failed to cancel bet");
+        vm.prank(address(maliciousContract));
+        slots.cancelBet(betId);
+
+        vm.expectRevert("Failed to payout win");
+        slots.fulfillRandomnessExternal(WINNING_ENTROPY, betId);
+        vm.expectRevert("VRF Callback failed");
+        vrf.fulfill(WINNING_ENTROPY, betId);
+
+        // Ensure the user, even though they're malicious, still have their bet active,
+        // so it can still be withdrawn at a later date if need be. Ensure jackpot has not
+        // been incremented
+        assertEq(address(maliciousContract).balance, (100 * 1e18) - bet);
+        // Ensure our bet has not been withdrawn maliciously
+        assertEq(address(slots).balance, bet);
+        // Ensure jackpot has not been incremented
+        assertEq(slots.jackpotWad(), 0);
+    }
+
+    function testPlaceBetDefaultWinlineFuzz(bytes32 entropy) public {
+        uint256 randomness = uint256(keccak256(abi.encodePacked(entropy)));
+        deal(address(slots), 100 * 1e18);
+        // 682 is 1010101010, Aka Only Row 1 / Middle Row
+        slots.fulfillRandomnessExternal(
+            randomness,
+            slots.placeBet{value: 1e18}(1e18, 682)
+        );
+    }
+
+    function testPlaceBetRandomWinlineFuzz(bytes32 entropy) public {
+        uint256 randomness = uint256(keccak256(abi.encodePacked(entropy)));
+        deal(address(slots), 100 * 1e18);
+
+        // Generate a random selection of winlines from the above entropy
+        uint256 winlines = WINLINES_FULL & 1023;
+        uint256 count = (randomness % 10) + 1;
+        for (uint256 j = 0; j < count; j++) {
+            winlines = (winlines << 10) | ((WINLINES_FULL >> 10 * (count - j)) & 1023);
+        }
+
+        slots.fulfillRandomnessExternal(
+            randomness,
+            slots.placeBet{value: 1e18 * (count + 1)}(1e18, winlines)
+        );
+    }
+
+    /*function testWinRateNormalWinline() public {
+        // 1 Ether
+        uint256 bet = 1e18;
+
+        // Start the slots off with 100 Ether
+        deal(address(slots), 100 * (10 ** 18));
+
+        for (uint256 i = 0; i < 100; i++) {
+            uint256 randomness = uint256(keccak256(abi.encodePacked(i)));
+            slots.fulfillRandomnessExternal(randomness, slots.placeBet{value: bet}(bet, 682));
+        }
+
+        emit log_uint(slots.jackpotWad() / 1e18);
+        emit log_uint(address(slots).balance / 1e18);
+        emit log_uint(address(this).balance / 1e18);
+    }*/
+
+    /*function testWinRateRandomWinlines() public {
+        // 0.01 Ether
+        uint256 bet = 1e16;
+
+        // Start the slots off with 100 Ether
+        deal(address(slots), 100 * (10 ** 18));
+
+        vm.recordLogs();
+        for (uint256 i = 0; i < 1000; i++) {
+            uint256 randomness = uint256(keccak256(abi.encodePacked(uint256(123), i)));
+            uint256 winlines = WINLINES_FULL & 1023;
+            uint256 count = (randomness % 10) + 1;
+            for (uint256 j = 0; j < count; j++) {
+                winlines = (winlines << 10) | ((WINLINES_FULL >> 10 * (count - j)) & 1023);
+            }
+            slots.fulfillRandomnessExternal(randomness, slots.placeBet{value: bet * (count + 1)}(bet, winlines));
+        }
+
+        emit log_uint(slots.jackpotWad() / 1e18);
+        emit log_uint(address(slots).balance / 1e18);
+        emit log_uint(address(this).balance / 1e18);
+    }*/
 }

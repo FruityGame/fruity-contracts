@@ -18,8 +18,8 @@ library Board {
         _;
     }
 
-    modifier payoutWithinBounds(uint256 payoutConstant) {
-        require(payoutConstant > 0 && payoutConstant <= 100, "Invalid payout constant provided");
+    modifier payoutConstantWithinBounds(uint256 payoutConstant) {
+        require(payoutConstant > 0, "Invalid payout constant provided");
         _;
     }
 
@@ -31,14 +31,19 @@ library Board {
         return num * WAD;
     }
 
-    function entropyToSymbol(uint256 entropy, uint256 symbolCountWad, uint256 payoutConstantWad) internal pure returns (uint256) {
+    function entropyToSymbol(
+        uint256 entropy,
+        uint256 symbolCountWad,
+        uint256 payoutConstantWad,
+        uint256 payoutBottomLine
+    ) internal pure returns (uint256) {
         // Roll a number from 1-100 inclusive
         // symbolCount / ((payoutConstant / roll)^2)
         // i.e. 6 / ((95 / roll) ^ 2)
         uint256 curve = divideWads(
             symbolCountWad,
             FixedPointMathLib.rpow(
-                divideWads(payoutConstantWad, toWad((entropy % 100) + 1)),
+                divideWads(payoutConstantWad, toWad((entropy % 100) + 1 + payoutBottomLine)),
                 2,
                 WAD
             )
@@ -47,19 +52,25 @@ library Board {
         return curve / WAD;
     }
 
-    function generate(uint256 entropy, uint256 boardSize, uint256 symbolCount, uint256 payoutConstant) internal pure
+    function generate(
+        uint256 entropy,
+        uint256 boardSize,
+        uint256 symbolCount,
+        uint256 payoutConstant,
+        uint256 payoutBottomLine
+    ) internal pure
         sizeWithinBounds(boardSize)
         symbolsWithinBounds(symbolCount)
-        payoutWithinBounds(payoutConstant)
+        payoutConstantWithinBounds(payoutConstant)
     returns (uint256 out) {
         if (boardSize == 0) return 0;
 
         uint256 symbolCountWad = toWad(symbolCount);
         uint256 payoutConstantWad = toWad(payoutConstant);
 
-        out |= entropyToSymbol(entropy, symbolCountWad, payoutConstantWad);
+        out |= entropyToSymbol(entropy, symbolCountWad, payoutConstantWad, payoutBottomLine);
         for (uint256 i = 1; i < boardSize; i++) {
-            out = (out << 4) | entropyToSymbol((entropy >> 4 * i) + i, symbolCountWad, payoutConstantWad);
+            out = (out << 4) | entropyToSymbol((entropy >> 4 * i) + i, symbolCountWad, payoutConstantWad, payoutBottomLine);
         }
 
         return out;

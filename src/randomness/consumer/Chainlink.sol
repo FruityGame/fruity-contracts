@@ -7,6 +7,13 @@ import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 import "src/randomness/Beacon.sol";
 
+struct VRFParams {
+    address coordinator;
+    address link;
+    bytes32 keyHash;
+    uint64 subscriptionId;
+}
+
 abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
     VRFCoordinatorV2Interface private immutable coordinator;
     LinkTokenInterface private immutable link;
@@ -15,17 +22,14 @@ abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
     uint64 private immutable subscriptionId;
 
     constructor(
-        address _coordinator,
-        address _link,
-        bytes32 _keyHash,
-        uint64 _subscriptionId
+        VRFParams memory params
     )
-        VRFConsumerBaseV2(_coordinator)
+        VRFConsumerBaseV2(params.coordinator)
     {
-        coordinator = VRFCoordinatorV2Interface(_coordinator);
-        link = LinkTokenInterface(_link);
-        keyHash = _keyHash;
-        subscriptionId = _subscriptionId;
+        coordinator = VRFCoordinatorV2Interface(params.coordinator);
+        link = LinkTokenInterface(params.link);
+        keyHash = params.keyHash;
+        subscriptionId = params.subscriptionId;
     }
 
     function requestRandomness() internal override returns (uint256) {
