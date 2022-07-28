@@ -10,13 +10,17 @@ contract SlotsTestHarness is BasicVideoSlots {
         address link,
         bytes32 keyHash,
         uint64 subscriptionId,
-        SlotParams memory _params
+        SlotParams memory _params,
+        uint8[] memory specialSymbols,
+        address specialSymbolsResolver
     ) BasicVideoSlots (
         coordinator,
         link,
         keyHash,
         subscriptionId,
-        _params
+        _params,
+        specialSymbols,
+        specialSymbolsResolver
     ) {}
 
     function checkWinlineExternal(uint256 board, uint256 winline) external view returns(uint256, uint256) {

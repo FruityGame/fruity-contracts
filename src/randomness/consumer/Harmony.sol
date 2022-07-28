@@ -3,7 +3,13 @@ pragma solidity ^0.8;
 
 import "src/randomness/Beacon.sol";
 
+struct VRFParams {
+    uint256 i;
+}
+
 abstract contract RandomnessConsumer is Beacon {
+    constructor(VRFParams memory params){}
+
     function requestRandomness() internal override returns (uint256) {
         uint[1] memory bn;
         bn[0] = block.number;

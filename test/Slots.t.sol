@@ -3,11 +3,11 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/libraries/Board.sol";
+import "src/SpecialSymbolsResolver.sol";
 import "test/harnesses/SlotsTestHarness.sol";
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockSlotsReentrancy.sol";
-
-using stdStorage for StdStorage;
+import "test/mocks/MockSpecialSymbolsResolver.sol";
 
 contract SlotsTest is Test {
     // 01|01|10|10|01
@@ -22,13 +22,17 @@ contract SlotsTest is Test {
     fallback() external payable {}
 
     function setUp() public virtual {
+        //uint8[16] memory specialSymbols = new uint8[16]();
+        MockSpecialSymbolsResolver ssr = new MockSpecialSymbolsResolver();
         vrf = new MockChainlinkVRF();
         slots = new SlotsTestHarness(
             address(vrf),
             address(0),
             bytes32(0),
             0,
-            SlotParams(15, 5, 6, 95, 1000000000000000)
+            SlotParams(15, 5, 6, 95, 1000000000000000),
+            new uint8[](0),
+            address(ssr)
         );
 
         deal(address(this), 100 * (10 ** 18));

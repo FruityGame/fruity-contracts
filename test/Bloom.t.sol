@@ -69,4 +69,12 @@ contract WinlineTest is Test {
             usedWinlines[winlines[j]] = false;
         }
     }
+
+    function testBloomFilterSpecialSymbols() public {
+        uint256 bloom = 0;
+
+        for (uint256 i = 0; i <= 15; i++) {
+            bloom = Bloom.insertChecked(bloom, bytes32(i));
+        }
+    }
 }

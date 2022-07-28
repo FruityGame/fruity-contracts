@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "solmate/tokens/ERC20.sol";
 import "solmate/utils/ReentrancyGuard.sol";
 import "src/libraries/Winline.sol";
 import "src/libraries/Board.sol";
 import "src/libraries/Bloom.sol";
 import "src/randomness/consumer/Chainlink.sol";
+import "src/SpecialSymbolsResolver.sol";
 
 // A 'Session' is a potentially active user request,
 // containing their address, bet, and winlines. To
@@ -33,6 +33,8 @@ uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
 uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
 
 contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
+    SpecialSymbolsResolver private specialSymbolsResolver;
+    uint256 private specialSymbols = 0;
     uint256 public jackpotWad = 0;
     SlotParams public params;
 
@@ -44,24 +46,32 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
 
     error BetTooSmall(uint256 betWad, uint256 wanted);
 
+    modifier isValidBet(uint256 betWad) {
+        if (betWad < params.minimumBetWad) revert BetTooSmall(betWad, params.minimumBetWad);
+        _;
+    }
+
     constructor(
         address coordinator,
         address link,
         bytes32 keyHash,
         uint64 subscriptionId,
-        SlotParams memory _params
+        SlotParams memory _params,
+        uint8[] memory _specialSymbols,
+        address _specialSymbolsResolver
     ) RandomnessConsumer(
         coordinator,
         link,
         keyHash,
         subscriptionId
     ) {
-        params = _params;
-    }
+        require(_specialSymbols.length <= 15, "Invalid number of special symbols provided");
+        for (uint256 i = 0; i < _specialSymbols.length; i++) {
+            specialSymbols = Bloom.insertChecked(specialSymbols, bytes32(uint256(_specialSymbols[i])));
+        }
 
-    modifier isValidBet(uint256 betWad) {
-        if (betWad < params.minimumBetWad) revert BetTooSmall(betWad, params.minimumBetWad);
-        _;
+        specialSymbolsResolver = SpecialSymbolsResolver(specialSymbolsResolver);
+        params = _params;
     }
 
     function placeBet(uint256 betWad, uint256 winlines) public payable
@@ -135,9 +145,15 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
                 // If the symbol is a jackpot symbol, and we rolled a jackpot:
                 if (symbol == params.symbolCount && ((randomness >> 2 * (i % 16)) + i) % 32 > 28) {
                     // This add is fine re: overflows, as jackpot is set to 0 immediately after
-                    payoutWad += jackpotWad;
-                    jackpotWad = 0;
+                    payoutWad += resolveJackpot();
                 }
+
+                // Resolve any special symbols we encountered
+                if (specialSymbols != 0 && Bloom.contains(specialSymbols, bytes32(symbol))) {
+                    // Forward on our session variables
+                    specialSymbolsResolver.resolveSpecialSymbols(symbol, count, params.rowSize);
+                }
+
                 // We do Symbol + 1, as the symbol is from 0-6.
                 // The Symbols apply a flat multiplier: the higher the symbol value,
                 // the rarer the symbol and the higher the payout multiplier.
@@ -159,6 +175,11 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
         // Resolve the users session, meaning they can no longer cancel the bet
         session.winlineCount ^= WINLINE_SESSION_FLAG;
         emit BetFulfilled(session.user, board, jackpotWad);
+    }
+
+    function resolveJackpot() internal returns (uint256 out) {
+        out = jackpotWad;
+        jackpotWad = 0;
     }
 
     function checkWinline(uint256 board, uint256 winline) internal view returns(uint256, uint256) {
@@ -191,6 +212,7 @@ contract BasicVideoSlots is RandomnessConsumer, ReentrancyGuard {
     function countWinlines(uint256 winlines) internal view returns (uint256 count) {
         uint256 bloom = 0;
 
+        // Count the number of winlines, whilst ensuring that they're unique
         while(winlines & 3 != 0) {
             bytes32 entry = bytes32(Winline.parseWinline(winlines, 0, params.rowSize));
             bloom = Bloom.insertChecked(bloom, entry);
