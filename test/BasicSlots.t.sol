@@ -11,6 +11,7 @@ import "test/mocks/MockSlotsReentrancy.sol";
 contract SlotsTest is Test {
     // 01|01|10|10|01
     uint256 constant WINLINE_STUB = 361;
+    uint256 constant WINLINE_WINNER_STUB = 890;
     uint256 constant internal WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(255))));
     // Full set of Fruity 5x5 winlines
     uint256 constant WINLINES_FULL = 536169616821538800036600934927570202961204380927034107000682;
@@ -41,8 +42,7 @@ contract SlotsTest is Test {
         assertEq(symbol1, 0);
         assertEq(count1, 0);
 
-        // 853 = 11|01|11|10|10
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, 890);
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(board, WINLINE_WINNER_STUB);
         assertEq(symbol2, 4);
         assertEq(count2, 4);
     }
@@ -74,6 +74,21 @@ contract SlotsTest is Test {
         assertEq(address(slots).balance, bet);
         // In WEI, should equal 0.333333333333333333 Ether
         assertEq(slots.jackpotWad(), 333333333333333333);
+    }
+
+    function testPlaceBetPayoutInsufficientFunds() public {
+        // Place our bet with a winning winline (to trigger payout)
+        uint256 betId = slots.placeBet{value: 1e18}(1e18, WINLINE_WINNER_STUB);
+
+        // Set the slots balance to 0
+        deal(address(slots), 1e6);
+
+        // Fulfill the bet
+        vrf.fulfill(WINNING_ENTROPY, betId);
+
+        // Ensure we've been paid out what was remaining in the slots
+        assertEq(address(this).balance, (100 * 1e18) - (1e18 - 1e6));
+        assertEq(address(slots).balance, 0);
     }
 
     function testPlaceBetInvalidAmountForWinlines() public {
@@ -146,6 +161,18 @@ contract SlotsTest is Test {
         assertEq(address(this).balance, 100 * 1e18);
         assertEq(address(slots).balance, 0);
         assertEq(slots.jackpotWad(), 0);
+    }
+
+    function testCancelBetInsufficientFunds() public {
+        // Place our bet
+        uint256 betId = slots.placeBet{value: 1e18}(1e18, WINLINE_STUB);
+
+        // Set the slots balance to 0
+        deal(address(slots), 0);
+
+        // Attempt to cancel our bet
+        vm.expectRevert("Insufficient funds in contract to process refund");
+        slots.cancelBet(betId);
     }
 
     function testCancelBetAlreadyFulfilledBet() public {
@@ -253,8 +280,8 @@ contract SlotsTest is Test {
         // Set the caller address for this function invocation to be the
         // malicious contracts, as if the contract were calling to place a bet
         vm.prank(address(maliciousContract));
-        // 890 winline is a winning line for the board we've generated
-        uint256 betId = slots.placeBet{value: bet}(bet, 890);
+        // Place a bet with a winning winline (will call payout)
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_WINNER_STUB);
         // Setup the malicious contract to attempt to cancel our betId with reentrancy
         maliciousContract.setBetId(betId);
 
@@ -284,8 +311,8 @@ contract SlotsTest is Test {
         // Set the caller address for this function invocation to be the
         // malicious contracts, as if the contract were calling to place a bet
         vm.prank(address(maliciousContract));
-        // 890 winline is a winning line for the board we've generated
-        uint256 betId = slots.placeBet{value: bet}(bet, 890);
+        // Place a bet with a winning winline (will call payout)
+        uint256 betId = slots.placeBet{value: bet}(bet, WINLINE_WINNER_STUB);
         // Setup the malicious contract to attempt to cancel our second betID
         maliciousContract.setBetId(betId);
 
