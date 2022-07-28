@@ -6,7 +6,6 @@ import "src/libraries/Board.sol";
 library Winline {
     uint256 constant WINLINE_MASK = (0x1 << 10) - 1;
 
-    event TestEvent(uint256 num, uint256 range);
     error InvalidWinlineNibble(uint256 nibble);
 
     modifier indexInBounds(uint256 index, uint256 winlineSize) {

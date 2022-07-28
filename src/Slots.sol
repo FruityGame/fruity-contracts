@@ -70,6 +70,7 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
     function payout(address user, uint256 payoutWad) internal virtual returns (bool) {}
     function refund(address user, uint256 refundWad) internal virtual returns (bool) {}
     function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal virtual {}
+    function takePayment(address user, uint256 totalBet) internal virtual {}
 
     function placeBet(uint256 betWad, uint256 winlines) public payable
         isValidBet(betWad)
@@ -77,7 +78,9 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
         // Each winline applies a flat multiplier to the cost of the bet
         uint256 winlineCount = countWinlines(winlines);
         uint256 totalBet = betWad * winlineCount;
-        require(msg.value >= totalBet, "Amount provided not enough to cover bet");
+
+        // Take payment from the sender
+        takePayment(msg.sender, totalBet);
 
         // Initiate a new VRF Request for the user
         uint256 requestId = requestRandomness();
