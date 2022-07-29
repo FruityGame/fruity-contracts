@@ -31,8 +31,8 @@ struct SlotParams {
 uint256 constant WINLINE_SESSION_FLAG = 1 << 255;
 // Subsequent mask for the max value of a winline, as per the above flag
 uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
-// Odds of winning the jackpot can be seen as 1/16383
-uint256 constant JACKPOT_WIN_MASK = (1 << 14) - 1;
+// Odds of winning the jackpot can be seen as (32*32) or a 1024 chance of winning
+uint256 constant JACKPOT_WIN_MASK = (1 << 5) - 1;
 
 abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
     SlotParams public params;
@@ -67,6 +67,7 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
         params = _params;
     }
 
+    function balance() internal virtual returns (uint256) {}
     function payout(address user, uint256 payoutWad) internal virtual returns (bool) {}
     function refund(address user, uint256 refundWad) internal virtual returns (bool) {}
     function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal virtual {}
@@ -110,7 +111,9 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
         // All methods of this contract are protected from reentrancy, therefore
         // changing requests AFTER the call to transfer the funds is okay
         // Get with the mask to omit the session lock bit
-        require(refund(session.user, session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)), "Failed to cancel bet");
+        uint256 refundAmount = session.betWad * (session.winlineCount & WINLINE_COUNT_MASK);
+        require(refundAmount < balance() - jackpotWad, "Insufficient funds in contract to process refund");
+        require(refund(session.user, refundAmount), "Failed to cancel bet");
 
         // Terminate their bet (only if the payment succeeds)
         session.winlineCount ^= WINLINE_SESSION_FLAG;
@@ -134,7 +137,7 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
 
         // Add a third of the users bet to the jackpot, provided minimumBetWad has been configured,
         // this should not overflow
-        jackpotWad += (session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)) / 3;
+        jackpotWad += (session.betWad * (session.winlineCount & WINLINE_COUNT_MASK)) / 100;
         
         // Get winlineCount with the mask to omit the the session lock bit
         for (uint256 i = 0; i < (session.winlineCount & WINLINE_COUNT_MASK); i++) {
@@ -158,17 +161,25 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
                 }
 
                 // We do Symbol + 1, as the symbol is from 0-6.
-                // The Symbols apply a flat multiplier: the higher the symbol value,
-                // the rarer the symbol and the higher the payout multiplier.
+                // The Symbols apply a multiplier according to the scale (num of possible symbols):
+                // the higher the symbol value, the rarer the symbol and the higher the payout multiplier.
                 // We do count - 2 for these calculations, as we want to emulate the following:
                 // 3 symbols: 1x multiplier
                 // 4 symbols: 2x multiplier
                 // 5 symbols: 3x multiplier
                 payoutWad += session.betWad * (
-                    ((symbol + 1) * 2) *
+                    (((symbol + 1) * 15) / params.symbolCount) *
                     (count - (params.rowSize / 2))
                 );
             }
+        }
+
+        // Ensures the newly updated jackpot is valid within the bounds of the machine balance
+        // this should never be reached, therefore it's asserted as an invariant
+        require(balance() >= jackpotWad, "Invariant in jackpot balance detected");
+
+        if (payoutWad > balance() - jackpotWad) {
+            payoutWad = balance() - jackpotWad;
         }
 
         if (payoutWad > 0) {
