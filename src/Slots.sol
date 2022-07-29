@@ -80,8 +80,16 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
         uint256 winlineCount = countWinlines(winlines);
         uint256 totalBet = betWad * winlineCount;
 
-        // Take payment from the sender
+        // Take payment from the sender, we do this first so we know what the balance would be post-bet
         takePayment(msg.sender, totalBet);
+
+        // 15 is the maximum multiplier in the payout, betWad / 100 is the calculated jackpot
+        // Use totalBet as it assumes every winline wins
+        // Ensure the machine has enough in the pot to cover the highest payout scenario for the user's bet
+        require(
+                (totalBet * 15 * params.rowSize) + (betWad / 100) + jackpotWad <= balance() - jackpotWad,
+                "Bet too large for contract payout"
+        );
 
         // Initiate a new VRF Request for the user
         uint256 requestId = requestRandomness();
@@ -168,7 +176,7 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
                 // 4 symbols: 2x multiplier
                 // 5 symbols: 3x multiplier
                 payoutWad += session.betWad * (
-                    (((symbol + 1) * 15) / params.symbolCount) *
+                    (((symbol + 1) * 15) / (params.symbolCount + 1)) *
                     (count - (params.rowSize / 2))
                 );
             }

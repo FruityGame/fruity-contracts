@@ -81,7 +81,7 @@ contract SlotsTest is Test {
     function testPlaceBetPayoutInsufficientFunds() public {
         // Place our bet with a winning winline (to trigger payout)
         uint256 betId = slots.placeBet{value: 1e18}(1e18, WINLINE_WINNER_STUB);
-        uint256 expectedPayout = 1e18 * 23;
+        uint256 expectedPayout = 1e18 * 20;
         deal(address(slots), expectedPayout + 1e6);
 
         // Fulfill the bet
@@ -126,6 +126,16 @@ contract SlotsTest is Test {
             abi.encodeWithSelector(Slots.BetTooSmall.selector, 1e6, 1e15)
         );
         slots.placeBet{value: bet}(bet, WINLINE_STUB);
+
+        assertEq(address(this).balance, SLOTS_FUNDS);
+        assertEq(address(slots).balance, SLOTS_FUNDS);
+        assertEq(slots.jackpotWad(), 0);
+    }
+
+    function testPlaceBetTooLarge() public {
+        uint256 bet = 1e18;
+        vm.expectRevert("Bet too large for contract payout");
+        slots.placeBet{value: bet * 2}(bet * 2, WINLINE_STUB);
 
         assertEq(address(this).balance, SLOTS_FUNDS);
         assertEq(address(slots).balance, SLOTS_FUNDS);
@@ -388,7 +398,7 @@ contract SlotsTest is Test {
 
         slots.fulfillRandomnessExternal(
             randomness,
-            slots.placeBet{value: 1e18 * (count + 1)}(1e18, winlines)
+            slots.placeBet{value: 1e16 * (count + 1)}(1e16, winlines)
         );
     }
 
