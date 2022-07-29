@@ -83,13 +83,9 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
         // Take payment from the sender, we do this first so we know what the balance would be post-bet
         takePayment(msg.sender, totalBet);
 
-        // 15 is the maximum multiplier in the payout, betWad / 100 is the calculated jackpot
-        // Use totalBet as it assumes every winline wins
-        // Ensure the machine has enough in the pot to cover the highest payout scenario for the user's bet
-        require(
-                (totalBet * 15 * params.rowSize) + (betWad / 100) + jackpotWad <= balance() - jackpotWad,
-                "Bet too large for contract payout"
-        );
+        // Ensure the users bet won't exceed the slot machine payout
+        //(totalBet * 15 * params.rowSize) + (betWad / 100) + jackpotWad <= balance() - jackpotWad,
+        require(totalBet <= balance() / 3, "Bet too large for contract payout");
 
         // Initiate a new VRF Request for the user
         uint256 requestId = requestRandomness();

@@ -133,12 +133,25 @@ contract SlotsTest is Test {
     }
 
     function testPlaceBetTooLarge() public {
-        uint256 bet = 1e18;
+        // Attempt to place a bet larger than the balance of the contract
         vm.expectRevert("Bet too large for contract payout");
-        slots.placeBet{value: bet * 2}(bet * 2, WINLINE_STUB);
+        slots.placeBet{value: (SLOTS_FUNDS / 2) + 1}((SLOTS_FUNDS / 2) + 1, WINLINE_STUB);
 
+        // Ensure balaces are correct
         assertEq(address(this).balance, SLOTS_FUNDS);
         assertEq(address(slots).balance, SLOTS_FUNDS);
+        assertEq(slots.jackpotWad(), 0);
+
+        // Set the balance of the contract to zero
+        deal(address(slots), 0);
+
+        // Attempt to place a bet of size 1
+        vm.expectRevert("Bet too large for contract payout");
+        slots.placeBet{value: 1e18}(1e18, WINLINE_STUB);
+
+        // Ensure balaces are correct
+        assertEq(address(this).balance, SLOTS_FUNDS);
+        assertEq(address(slots).balance, 0);
         assertEq(slots.jackpotWad(), 0);
     }
 
@@ -404,12 +417,13 @@ contract SlotsTest is Test {
 
     /*function testWinRateNormalWinline() public {
         // 1 Ether
-        uint256 bet = 1e18;
+        uint256 bet = 1e18 * 10;
 
-        deal(address(this), 1000 * 1e18);
+        //deal(address(slots), 1000 * 1e18);
+        //deal(address(this), 1000 * 1e18);
 
-        for (uint256 i = 0; i < 20000; i++) {
-            uint256 randomness = uint256(keccak256(abi.encodePacked(uint256(0xfc78e2ba), i)));
+        for (uint256 i = 0; i < 500; i++) {
+            uint256 randomness = uint256(keccak256(abi.encodePacked(uint256(3452123223234511), i)));
             slots.fulfillRandomnessExternal(randomness, slots.placeBet{value: bet}(bet, 682));
         }
 
@@ -419,13 +433,12 @@ contract SlotsTest is Test {
     }*/
 
     /*function testWinRateRandomWinlines() public {
-        // 0.01 Ether
-        uint256 bet = 1e18;
+        uint256 bet = 1e18 * 5;
 
-        // Start the slots off with 100 Ether
         deal(address(this), 1000 * 1e18);
+        deal(address(slots), 1000 * 1e18);
 
-        for (uint256 i = 0; i < 2500; i++) {
+        for (uint256 i = 0; i < 100; i++) {
             uint256 randomness = uint256(keccak256(abi.encodePacked(uint256(0xfc78e2ba), i)));
             uint256 winlines = WINLINES_FULL & 1023;
             uint256 count = (randomness % 10) + 1;
