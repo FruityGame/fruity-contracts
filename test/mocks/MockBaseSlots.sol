@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/slots/NativeTokenSlots.sol";
+import "src/slots/BaseSlots.sol";
 import "src/randomness/consumer/Chainlink.sol";
 
-// Flag used to denote an active or fulfilled session
 uint256 constant ACTIVE_SESSION = 1 << 255;
-// Mask to exclude the above bit in winlineCount
 uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
 
-contract Fruity is NativeTokenSlots, ChainlinkConsumer {
-    mapping(uint256 => SlotSession) private sessions;
+contract MockBaseSlots is BaseSlots, ChainlinkConsumer {
+    mapping(uint256 => SlotSession) public sessions;
 
     constructor(
+        SlotParams memory slotParams,
         VaultParams memory vaultParams,
-        VRFParams memory vrfParams
+        VRFParams memory vrfParams,
+        uint256[] memory winlines
     )
         ChainlinkConsumer(vrfParams)
-        NativeTokenSlots(
-            getInitialParams(),
+        BaseSlots(
+            slotParams,
             vaultParams,
-            getInitialWinlines()
+            winlines
         )
     {}
 
@@ -53,16 +53,23 @@ contract Fruity is NativeTokenSlots, ChainlinkConsumer {
         sessions[betId].winlineCount ^= ACTIVE_SESSION;
     }
 
-    // I hate this language so much
-    function getInitialWinlines() private pure returns (uint256[] memory out) {
-        out = new uint256[](20);
-        out[0] = 341; out[1] = 682; out[2] = 1023; out[3] = 630; out[4] = 871;
-        out[5] = 986; out[6] = 671; out[7] = 473; out[8] = 413; out[9] = 854;
-        out[10] = 599; out[11] = 873; out[12] = 637; out[13] = 869; out[14] = 629;
-        out[15] = 474; out[16] = 415; out[17] = 985; out[18] = 669; out[19] = 874;
+    /*
+        Methods to expose internal logic for testing
+    */
+    function checkWinlineExternal(uint256 board, uint256 winline) external view returns(uint256, uint256) {
+        return checkWinline(board, winline, params);
     }
 
-    function getInitialParams() private pure returns (SlotParams memory out) {
-        out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 1e15);
+    function checkScatterExternal(uint256 board) external view returns(uint256) {
+        return checkScatter(board, params);
+    }
+
+    function countWinlinesExternal(uint256 winlines) external view returns (uint256 count) {
+        return countWinlines(winlines, params.reels);
+    }
+
+    function fulfillRandomnessExternal(uint256 id, uint256 randomness) external {
+        return fulfillRandomness(id, randomness);
     }
 }
+

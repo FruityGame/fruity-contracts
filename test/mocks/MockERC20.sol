@@ -3,12 +3,12 @@ pragma solidity ^0.8;
 
 import "solmate/tokens/ERC20.sol";
 
-contract MockFruityERC20 is ERC20 {
-    constructor() ERC20(
+contract MockERC20 is ERC20 {
+    constructor(uint256 quantityWad) ERC20(
         "FRUITY",
         "FRTY",
-        8
+        18
     ) {
-        _mint(msg.sender, 10000000 * (10 ** 8));
+        _mint(msg.sender, quantityWad);
     }
 }

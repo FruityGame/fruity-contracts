@@ -8,7 +8,7 @@ contract MockChainlinkVRF is VRFCoordinatorV2Interface {
     uint256 public requestId = 0;
     address request;
 
-    function fulfill(uint256 randomness, uint256 _requestId) external {
+    function fulfill(uint256 _requestId, uint256 randomness) external {
         uint256[] memory words = new uint256[](1);
         words[0] = randomness;
 

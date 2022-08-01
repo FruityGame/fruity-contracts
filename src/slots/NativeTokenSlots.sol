@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "solmate/tokens/WETH.sol";
+import { WETH } from "solmate/tokens/WETH.sol";
 import "src/slots/BaseSlots.sol";
 
 abstract contract NativeTokenSlots is BaseSlots {
@@ -20,19 +20,19 @@ abstract contract NativeTokenSlots is BaseSlots {
     }
 
     function payout(address user, uint256 payoutWad) internal override canAfford(payoutWad) {
-        //native.withraw(payoutWad);
+        native.withdraw(payoutWad);
         (bool success, ) = payable(user).call{value: payoutWad}("");
         if (!success) revert PayoutError(user, payoutWad);
     }
 
     function refund(address user, uint256 refundWad) internal override canAfford(refundWad) {
-        //native.withraw(refundWad);
+        native.withdraw(refundWad);
         (bool success, ) = payable(user).call{value: refundWad}("");
         if (!success) revert RefundError(user, refundWad);
     }
 
     function takePayment(address user, uint256 paymentWad) internal override {
-        if (msg.value < paymentWad) revert InsufficientFunds(msg.value, paymentWad);
-        //native.deposit();
+        if (msg.value != paymentWad) revert InsufficientFunds(msg.value, paymentWad);
+        native.deposit();
     }
 }

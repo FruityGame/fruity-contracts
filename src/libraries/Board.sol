@@ -2,18 +2,19 @@
 pragma solidity ^0.8;
 
 import "solmate/utils/FixedPointMathLib.sol";
+import { SlotParams } from "src/slots/BaseSlots.sol";
 
 uint256 constant WAD = 1e18;
 uint256 constant MASK_4 = (0x1 << 4) - 1;
 
 library Board {
-    modifier symbolsWithinBounds(uint256 symbolCount) {
-        require(symbolCount > 0 && symbolCount <= 15, "Invalid number of symbols provided");
+    modifier symbolsWithinBounds(SlotParams memory params) {
+        require(params.symbols > 0 && params.symbols <= 15, "Invalid number of symbols provided");
         _;
     }
 
-    modifier payoutConstantWithinBounds(uint256 payoutConstant) {
-        require(payoutConstant > 0, "Invalid payout constant provided");
+    modifier payoutConstantWithinBounds(SlotParams memory params) {
+        require(params.payoutConstant > 0, "Invalid payout constant provided");
         _;
     }
 
@@ -46,26 +47,19 @@ library Board {
         return curve / WAD;
     }
 
-    function generate(
-        uint256 entropy,
-        uint256 rows,
-        uint256 columns,
-        uint256 symbolCount,
-        uint256 payoutConstant,
-        uint256 payoutBottomLine
-    ) internal pure
-        symbolsWithinBounds(symbolCount)
-        payoutConstantWithinBounds(payoutConstant)
+    function generate(uint256 entropy, SlotParams memory params) internal pure
+        symbolsWithinBounds(params)
+        payoutConstantWithinBounds(params)
     returns (uint256 out) {
-        uint256 boardSize = columns * rows;
+        uint256 boardSize = params.reels * params.rows;
         require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
 
-        uint256 symbolCountWad = toWad(symbolCount);
-        uint256 payoutConstantWad = toWad(payoutConstant);
+        uint256 symbolCountWad = toWad(params.symbols);
+        uint256 payoutConstantWad = toWad(params.payoutConstant);
 
-        out |= entropyToSymbol(entropy, symbolCountWad, payoutConstantWad, payoutBottomLine);
+        out |= entropyToSymbol(entropy, symbolCountWad, payoutConstantWad, params.payoutBottomLine);
         for (uint256 i = 1; i < boardSize; i++) {
-            out = (out << 4) | entropyToSymbol((entropy >> 4 * i) + i, symbolCountWad, payoutConstantWad, payoutBottomLine);
+            out = (out << 4) | entropyToSymbol((entropy >> 4 * i) + i, symbolCountWad, payoutConstantWad, params.payoutBottomLine);
         }
 
         return out;
