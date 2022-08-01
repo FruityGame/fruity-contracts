@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+/*// SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
 import "src/Slots.sol";
@@ -33,4 +33,4 @@ contract BasicSlots is Slots {
     }
 
     function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal override {}
-}
+}*/

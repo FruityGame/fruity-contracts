@@ -8,7 +8,6 @@ import "src/libraries/Board.sol";
 contract WinlineTest is Test {
     // 01|01|10|10|01
     uint256 constant WINLINE_STUB = 361;
-    uint256 constant internal MAX_INT = 2**256 - 1;
 
     function setUp() public virtual {}
 
@@ -23,12 +22,13 @@ contract WinlineTest is Test {
         }
     }
 
-    function testLineNibbleToRow() public {
-        assertEq(Winline.lineNibbleToRow((WINLINE_STUB) & 3), 0);
-        assertEq(Winline.lineNibbleToRow((WINLINE_STUB >> 2) & 3), 1);
-        assertEq(Winline.lineNibbleToRow((WINLINE_STUB >> 4) & 3), 1);
-        assertEq(Winline.lineNibbleToRow((WINLINE_STUB >> 6) & 3), 0);
-        assertEq(Winline.lineNibbleToRow((WINLINE_STUB >> 8) & 3), 0);
+    // This test uses lineNibbleToRow, therefore lineNibbleToRow is also bueno if this test passes
+    function testGetNibbleSingleLine() public {
+        assertEq(Winline.getNibbleSingleLine(WINLINE_STUB, 0), 0);
+        assertEq(Winline.getNibbleSingleLine(WINLINE_STUB, 1), 1);
+        assertEq(Winline.getNibbleSingleLine(WINLINE_STUB, 2), 1);
+        assertEq(Winline.getNibbleSingleLine(WINLINE_STUB, 3), 0);
+        assertEq(Winline.getNibbleSingleLine(WINLINE_STUB, 4), 0);
     }
 
     function testLineNibbleToRowInvalidNibble() public {
@@ -43,17 +43,53 @@ contract WinlineTest is Test {
         Winline.lineNibbleToRow(4);
     }
 
+    function testGetNibbleSingleLineInvalidIndex() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineNibble.selector, 0)
+        );
+        Winline.getNibbleSingleLine(WINLINE_STUB, 5);
+    }
+
+    function testGetNibbleMultiLine() public {
+        // Create a winline of len 2
+        uint256 winlines = (WINLINE_STUB << 10) | WINLINE_STUB;
+
+        for (uint256 i = 0; i < 2; i++) {
+            assertEq(Winline.getNibbleMultiLine(winlines, i, 0, 5), Winline.getNibbleSingleLine(WINLINE_STUB, 0));
+            assertEq(Winline.getNibbleMultiLine(winlines, i, 1, 5), Winline.getNibbleSingleLine(WINLINE_STUB, 1));
+            assertEq(Winline.getNibbleMultiLine(winlines, i, 2, 5), Winline.getNibbleSingleLine(WINLINE_STUB, 2));
+            assertEq(Winline.getNibbleMultiLine(winlines, i, 3, 5), Winline.getNibbleSingleLine(WINLINE_STUB, 3));
+            assertEq(Winline.getNibbleMultiLine(winlines, i, 4, 5), Winline.getNibbleSingleLine(WINLINE_STUB, 4));
+        }
+    }
+
+    function testGetNibbleMultiLineInvalidWinlineIndex() public {
+        vm.expectRevert("Invalid winline index provided");
+        Winline.getNibbleMultiLine(WINLINE_STUB, 25, 0, 5);
+    }
+
+    // Will fail because nibble index 0 is less than winline len 0
+    function testGetNibbleMultiLineInvalidWinlineLen() public {
+        vm.expectRevert("Invalid winline nibble index provided");
+        Winline.getNibbleMultiLine(WINLINE_STUB, 0, 0, 0);
+    }
+
+    function testGetNibbleMultiLineInvalidNibbleIndex() public {
+        vm.expectRevert("Invalid winline nibble index provided");
+        Winline.getNibbleMultiLine(WINLINE_STUB, 0, 5, 5);
+    }
+
     function testParseWinline() public {
         assertEq(Winline.parseWinline(WINLINE_STUB, 0, 5), WINLINE_STUB);
     }
 
     function testParseWinlineInvalidIndex() public {
-        vm.expectRevert("Invalid index provided");
+        vm.expectRevert("Invalid winline index provided");
         Winline.parseWinline(WINLINE_STUB, 25, 5);
     }
 
-    function testParseWinlineInvalidSize() public {
-        vm.expectRevert("Invalid winline size provided");
+    function testParseWinlineInvalidLen() public {
+        vm.expectRevert("Invalid winline length provided");
         Winline.parseWinline(WINLINE_STUB, 0, 0);
     }
 }

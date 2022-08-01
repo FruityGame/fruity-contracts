@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
 import "solmate/utils/ReentrancyGuard.sol";
 import "src/libraries/Winline.sol";
@@ -34,7 +34,7 @@ uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
 // Odds of winning the jackpot can be seen as (32*32) or a 1024 chance of winning
 uint256 constant JACKPOT_WIN_MASK = (1 << 5) - 1;
 
-abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
+abstract contract AbstractSlots is RandomnessConsumer, ReentrancyGuard {
     SlotParams public params;
 
     uint256 public jackpotWad = 0;
@@ -70,8 +70,8 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
     function balance() internal virtual returns (uint256) {}
     function payout(address user, uint256 payoutWad) internal virtual returns (bool) {}
     function refund(address user, uint256 refundWad) internal virtual returns (bool) {}
-    function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal virtual {}
     function takePayment(address user, uint256 totalBet) internal virtual {}
+    function resolveSpecialSymbols(uint256 symbol, uint256 count, uint256 board) internal virtual {}
 
     function placeBet(uint256 betWad, uint256 winlines) public payable
         isValidBet(betWad)
@@ -233,4 +233,4 @@ abstract contract Slots is RandomnessConsumer, ReentrancyGuard {
             count += 1;
         }
     }
-}
+}*/

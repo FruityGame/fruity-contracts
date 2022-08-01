@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/libraries/Board.sol";
@@ -452,4 +452,4 @@ contract SlotsTest is Test {
         emit log_uint(address(slots).balance / 1e18);
         emit log_uint(address(this).balance / 1e18);
     }*/
-}
+//}

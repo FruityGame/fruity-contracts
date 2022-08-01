@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
 import "src/BasicSlots.sol";
 
@@ -18,4 +18,4 @@ contract MockSlotsCancelReentrancy  {
     fallback() external payable {
         BasicSlots(msg.sender).cancelBet(betId);
     }
-}
+}*/

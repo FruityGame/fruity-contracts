@@ -5,7 +5,7 @@ import "chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-import "src/randomness/Beacon.sol";
+import "src/randomness/RandomnessBeacon.sol";
 
 struct VRFParams {
     address coordinator;
@@ -14,7 +14,7 @@ struct VRFParams {
     uint64 subscriptionId;
 }
 
-abstract contract RandomnessConsumer is Beacon, VRFConsumerBaseV2 {
+abstract contract ChainlinkConsumer is RandomnessBeacon, VRFConsumerBaseV2 {
     VRFCoordinatorV2Interface private immutable coordinator;
     LinkTokenInterface private immutable link;
 

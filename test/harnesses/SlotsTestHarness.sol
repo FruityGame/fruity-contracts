@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/BasicSlots.sol";
@@ -32,4 +32,4 @@ contract SlotsTestHarness is BasicSlots {
     function setExpectedSpecialSymbol(uint256 symbol) external {
         expectedSpecialSymbol = symbol;
     }
-}
+}*/

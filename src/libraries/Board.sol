@@ -4,15 +4,9 @@ pragma solidity ^0.8;
 import "solmate/utils/FixedPointMathLib.sol";
 
 uint256 constant WAD = 1e18;
+uint256 constant MASK_4 = (0x1 << 4) - 1;
 
 library Board {
-    uint256 constant MASK_4 = (0x1 << 4) - 1;
-
-    modifier sizeWithinBounds(uint256 boardSize) {
-        require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
-        _;
-    }
-
     modifier symbolsWithinBounds(uint256 symbolCount) {
         require(symbolCount > 0 && symbolCount <= 15, "Invalid number of symbols provided");
         _;
@@ -54,16 +48,17 @@ library Board {
 
     function generate(
         uint256 entropy,
-        uint256 boardSize,
+        uint256 rows,
+        uint256 columns,
         uint256 symbolCount,
         uint256 payoutConstant,
         uint256 payoutBottomLine
     ) internal pure
-        sizeWithinBounds(boardSize)
         symbolsWithinBounds(symbolCount)
         payoutConstantWithinBounds(payoutConstant)
     returns (uint256 out) {
-        if (boardSize == 0) return 0;
+        uint256 boardSize = columns * rows;
+        require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
 
         uint256 symbolCountWad = toWad(symbolCount);
         uint256 payoutConstantWad = toWad(payoutConstant);
@@ -80,7 +75,12 @@ library Board {
         return (board >> 4 * index) & MASK_4;
     }
 
-    function getWithRow(uint256 board, uint256 row, uint256 rowIndex, uint256 rowSize) internal pure returns (uint256) {
-        return get(board, (row * rowSize) + rowIndex);
+    function getFrom(
+        uint256 board,
+        uint256 rowIndex,
+        uint256 columnIndex,
+        uint256 rowLen
+    ) internal pure returns (uint256) {
+        return get(board, (rowIndex * rowLen) + columnIndex);
     }
 }
