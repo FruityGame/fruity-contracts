@@ -32,9 +32,9 @@ library Board {
         uint256 payoutConstantWad,
         uint256 payoutBottomLine
     ) internal pure returns (uint256) {
-        // Roll a number from 1-100 inclusive
-        // symbolCount / ((payoutConstant / roll)^2)
-        // i.e. 6 / ((95 / roll) ^ 2)
+        // Roll a number from 1-100 inclusive and map the result
+        // to a symbol number via an exponential curve
+        // symbolCount / ((payoutConstant / (roll + bottomLine)) ^ 2)
         uint256 curve = divideWads(
             symbolCountWad,
             FixedPointMathLib.rpow(

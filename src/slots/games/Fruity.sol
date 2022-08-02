@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
+import "src/slots/MultiLineSlots.sol";
 import "src/slots/NativeTokenSlots.sol";
 import "src/randomness/consumer/Chainlink.sol";
 
-// Flag used to denote an active or fulfilled session
-uint256 constant ACTIVE_SESSION = 1 << 255;
-// Mask to exclude the above bit in winlineCount
-uint256 constant WINLINE_COUNT_MASK = (1 << 254) - 1;
-
-contract Fruity is NativeTokenSlots, ChainlinkConsumer {
+contract Fruity is MultiLineSlots, NativeTokenSlots, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
     constructor(
@@ -17,40 +13,27 @@ contract Fruity is NativeTokenSlots, ChainlinkConsumer {
         VRFParams memory vrfParams
     )
         ChainlinkConsumer(vrfParams)
-        NativeTokenSlots(
-            getInitialParams(),
-            vaultParams,
-            getInitialWinlines()
-        )
+        NativeTokenSlots(vaultParams)
+        MultiLineSlots(getInitialParams(), vaultParams, getInitialWinlines())
     {}
 
     function getSession(uint256 betId) internal view override
     returns (SlotSession memory session) {
         session = sessions[betId];
 
-        if (session.winlineCount & ACTIVE_SESSION != ACTIVE_SESSION) {
-            revert InvalidSession(session.user, betId);
-        }
-
-        // Omit the session lock bit from the returned winline count
-        session.winlineCount &= WINLINE_COUNT_MASK;
+        if (session.betWad == 0) revert InvalidSession(session.user, betId);
     }
 
     function startSession(uint256 betId, SlotSession memory session) internal override {
-        if (session.winlineCount & ACTIVE_SESSION == ACTIVE_SESSION) {
-            revert InvalidSession(session.user, betId);
-        }
+        if (session.betWad == 0) revert InvalidSession(session.user, betId);
 
-        session.winlineCount |= ACTIVE_SESSION;
         sessions[betId] = session;
     }
 
     function endSession(uint256 betId) internal override {
-        if (sessions[betId].winlineCount & ACTIVE_SESSION != ACTIVE_SESSION) {
-            revert InvalidSession(sessions[betId].user, betId);
-        }
+        if (sessions[betId].betWad == 0) revert InvalidSession(sessions[betId].user, betId);
 
-        sessions[betId].winlineCount ^= ACTIVE_SESSION;
+        sessions[betId].betWad = 0;
     }
 
     // I hate this language so much
@@ -65,4 +48,4 @@ contract Fruity is NativeTokenSlots, ChainlinkConsumer {
     function getInitialParams() private pure returns (SlotParams memory out) {
         out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 1e15);
     }
-}
+}*/

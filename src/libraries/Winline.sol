@@ -22,7 +22,6 @@ library Winline {
         return nibble - 1;
     }
 
-    // Validation of output is up to the dev with this function
     function getNibbleSingleLine(
         uint256 winline,
         uint256 nibbleIndex
