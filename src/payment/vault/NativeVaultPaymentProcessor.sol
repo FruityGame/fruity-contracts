@@ -10,7 +10,7 @@ import "src/payment/PaymentProcessor.sol";
 abstract contract NativeVaultPaymentProcessor is VaultPaymentProcessor, NativePaymentProcessor {
     WETH public native;
 
-    modifier preDepositHook() override {
+    modifier preDepositHook(uint256 paymentWad) override {
         native.deposit{value: msg.value}();
         _;
     }
@@ -25,6 +25,6 @@ abstract contract NativeVaultPaymentProcessor is VaultPaymentProcessor, NativePa
     }
 
     function __balance() internal view override returns (uint256) {
-        return totalAssets();
+        return native.balanceOf(address(this));
     }
 }

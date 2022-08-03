@@ -7,7 +7,7 @@ abstract contract NativePaymentProcessor is PaymentProcessor {
 
     error PaymentError(address user, uint256 payoutWad);
 
-    modifier preDepositHook() virtual {
+    modifier preDepositHook(uint256 paymentWad) virtual {
         _;
     }
 
@@ -20,7 +20,7 @@ abstract contract NativePaymentProcessor is PaymentProcessor {
         _;
     }
 
-    function _deposit(address from, uint256 paymentWad) internal override userCanAfford(paymentWad) preDepositHook() {}
+    function _deposit(address from, uint256 paymentWad) internal override userCanAfford(paymentWad) preDepositHook(paymentWad) {}
 
     function _withdraw(address to, uint256 paymentWad) internal override canAfford(paymentWad) preWithdrawHook(paymentWad) {
         (bool success, ) = payable(to).call{value: paymentWad}("");

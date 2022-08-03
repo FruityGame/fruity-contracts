@@ -5,9 +5,7 @@ import "src/slots/BaseSlots.sol";
 
 // Optimised for single paylines only (although not bytecode optimised lol)
 abstract contract SinglePaylineSlots is BaseSlots {
-    constructor(
-        SlotParams memory slotParams
-    ) BaseSlots(slotParams) {}
+    constructor(SlotParams memory slotParams) BaseSlots(slotParams) {}
 
     /*
         Core Logic

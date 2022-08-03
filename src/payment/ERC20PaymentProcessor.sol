@@ -29,7 +29,7 @@ abstract contract ERC20PaymentProcessor is PaymentProcessor {
         token = ERC20(_token);
     }
 
-    function _deposit(address from, uint256 paymentWad) isZeroMsgValue() userCanAfford(from, paymentWad) internal override {
+    function _deposit(address from, uint256 paymentWad) internal override isZeroMsgValue() userCanAfford(from, paymentWad) {
         token.transferFrom(from, address(this), paymentWad);
     }
 

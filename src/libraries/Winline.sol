@@ -2,8 +2,6 @@
 pragma solidity ^0.8;
 
 library Winline {
-    uint256 constant WINLINE_MASK = (0x1 << 10) - 1;
-
     error InvalidWinlineNibble(uint256 nibble);
 
     modifier winlineParamsInBounds(uint256 winlineIndex, uint256 winlineLen) {

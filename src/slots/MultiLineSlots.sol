@@ -11,10 +11,7 @@ import "src/libraries/Board.sol";
 abstract contract MultiLineSlots is BaseSlots {
     mapping(bytes32 => bool) public validWinlines;
 
-    constructor(
-        SlotParams memory slotParams,
-        uint256[] memory winlines
-    ) BaseSlots(slotParams) {
+    constructor(SlotParams memory slotParams, uint256[] memory winlines) BaseSlots(slotParams) {
         for (uint256 i = 0; i < winlines.length; ++i) {
             validWinlines[bytes32(winlines[i])] = true;
         }
