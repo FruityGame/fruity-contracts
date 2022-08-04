@@ -495,4 +495,29 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
         assertEq(address(maliciousContract).balance, 2e18);
     }
+
+    function testRedeemReentrancyERC4626() public {
+        RedeemReentrancy maliciousContract = new RedeemReentrancy();
+        deal(address(maliciousContract), 10e18);
+
+        paymentProcessor.mint{value: 1e18}(1e18, address(this));
+
+        vm.prank(address(maliciousContract));
+        paymentProcessor.mint{value: 10e18}(10e18, address(maliciousContract));
+
+        assertEq(paymentProcessor.totalSupply(), 11e18);
+        assertEq(paymentProcessor.totalAssets(), 11e18);
+        assertEq(paymentProcessor.balanceOf(address(maliciousContract)), 10e18);
+        assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
+        assertEq(address(maliciousContract).balance, 0);
+
+        vm.prank(address(maliciousContract));
+        paymentProcessor.redeem(1e18, address(maliciousContract), address(maliciousContract));
+
+        assertEq(paymentProcessor.totalSupply(), 9e18);
+        assertEq(paymentProcessor.totalAssets(), 9e18);
+        assertEq(paymentProcessor.balanceOf(address(maliciousContract)), 8e18);
+        assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
+        assertEq(address(maliciousContract).balance, 2e18);
+    }
 }

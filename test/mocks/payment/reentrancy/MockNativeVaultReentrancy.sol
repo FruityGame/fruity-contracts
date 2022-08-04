@@ -24,12 +24,13 @@ contract WithdrawReentrancy {
     }
 }
 
-contract MintReentrancy  {
+contract RedeemReentrancy  {
     bool ran = false;
     receive() external payable {
         if (!ran) {
             ran = true;
             MockNativeVaultPaymentProcessor(msg.sender).mint{value: msg.value}(msg.value, address(this));
+            MockNativeVaultPaymentProcessor(msg.sender).redeem(1e18, address(this), address(this));
             MockNativeVaultPaymentProcessor(msg.sender).redeem(1e18, address(this), address(this));
         }
     }
@@ -38,6 +39,7 @@ contract MintReentrancy  {
         if (!ran) {
             ran = true;
             MockNativeVaultPaymentProcessor(msg.sender).mint{value: msg.value}(msg.value, address(this));
+            MockNativeVaultPaymentProcessor(msg.sender).redeem(1e18, address(this), address(this));
             MockNativeVaultPaymentProcessor(msg.sender).redeem(1e18, address(this), address(this));
         }
     }
