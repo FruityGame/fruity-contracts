@@ -123,6 +123,7 @@ abstract contract ERC4626Native is ERC20 {
     function convertToSharesInternal(uint256 assets) internal view virtual returns (uint256) {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
+        // Using assets here is fine as we explicitly require msg.value == assets in deposit()
         return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets() - assets);
     }
 

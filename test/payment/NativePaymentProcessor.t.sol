@@ -3,6 +3,7 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "test/mocks/payment/MockNativePaymentProcessor.sol";
+import "test/mocks/payment/reentrancy/MockNativeReentrancy.sol";
 
 contract NativePaymentProcessorTest is Test {
     uint256 constant FUNDS = 100 * 1e18;
@@ -66,5 +67,17 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, FUNDS);
         assertEq(paymentProcessor.balanceExternal(), FUNDS);
+    }
+
+    function testWithdrawReentrancy() public {
+        WithdrawReentrancy maliciousContract = new WithdrawReentrancy();
+
+        vm.prank(address(maliciousContract));
+        paymentProcessor.withdrawExternal(address(maliciousContract), 1e18);
+
+        // Ensure state has been correctly updated (i.e. balance is deducted before the call())
+        assertEq(address(maliciousContract).balance, 2e18);
+        assertEq(address(paymentProcessor).balance, FUNDS - 2e18);
+        assertEq(paymentProcessor.balanceExternal(), FUNDS - 2e18);
     }
 }

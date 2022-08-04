@@ -40,7 +40,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.totalSupply(), 0);
     }
 
-    function testDepositInvalidFunds() public {
+    function testDepositInsufficientFunds() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 PaymentProcessor.InsufficientFunds.selector,
@@ -359,6 +359,24 @@ contract NativeVaultPaymentProcessorTest is Test {
         vm.prank(address(0));
         // Deposit with _deposit()
         paymentProcessor.depositExternal{value: 1000e18}(address(0), 1000e18);
+        // 1/3 of the new deposit value
+        uint256 third = uint256(1000e18) / uint256(3);
+        // Ensure that our shares are now worth more as a result of the deposit
+        // (if we were to use withdraw to take out our original deposit)
+        assert(paymentProcessor.previewWithdraw(2e18) < ourShares);
+        assert(paymentProcessor.previewWithdraw(1e18) < theirShares);
+        assertEq(paymentProcessor.previewWithdraw(2e18 + (third * 2)), ourShares);
+        assertEq(paymentProcessor.previewWithdraw(1e18 + third), theirShares);
+        assertEq(paymentProcessor.previewRedeem(ourShares), 2e18 + (third * 2));
+        assertEq(paymentProcessor.previewRedeem(theirShares), 1e18 + third);
+
+        // 1000 Eth + (us) 2 Eth + (them) 1 Eth
+        assertEq(paymentContract.balance, 1003e18);
+        assertEq(paymentProcessor.totalAssets(), 1003e18);
+        assertEq(paymentProcessor.balanceExternal(), 1003e18);
+
+        // Ensure our total share supply isn't factoring in the external _deposit()
+        assertEq(paymentProcessor.totalSupply(), 3e18);
 
         paymentProcessor.redeem(ourShares, us, us);
         vm.prank(them);
@@ -369,15 +387,15 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceOf(them), 0);
         assertEq(paymentProcessor.balanceOf(paymentContract), 0);
 
-        uint256 third = uint256(1000e18) / uint256(3);
         // Ensure funds have been received with Yield
         assertEq(us.balance, FUNDS + (third * 2)); // We should receive 66%
-        // Solmate Contract impl rounds up for some reason, it's documented in their tests so
+        // Accomodate the roundup in the previewRedeem()
         assertEq(them.balance, 1e18 + third + 1); // They should receive 33%
         assertEq(paymentContract.balance, 0);
         assertEq(paymentProcessor.totalAssets(), 0);
         assertEq(paymentProcessor.balanceExternal(), 0);
 
+        // Ensure all shares have been redeemed
         assertEq(paymentProcessor.totalSupply(), 0);
     }
 
@@ -418,18 +436,6 @@ contract NativeVaultPaymentProcessorTest is Test {
         paymentProcessor.withdraw(1e18, address(this), address(this));
     }
 
-    function testRedeemInsufficientFunds() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PaymentProcessor.InsufficientFunds.selector,
-                address(paymentProcessor),
-                0,
-                1e18
-            )
-        );
-        paymentProcessor.redeem(1e18, address(this), address(this));
-    }
-
     function testWithdrawZeroERC4626() public {
         paymentProcessor.deposit{value: 1e18}(1e18, address(this));
         paymentProcessor.withdraw(0, address(this), address(this));
@@ -448,11 +454,6 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.totalAssets(), 0);
     }
 
-    function testRedeemZero() public {
-        vm.expectRevert("ZERO_ASSETS");
-        paymentProcessor.redeem(0, address(this), address(this));
-    }
-
     function testFailWithdrawMoreThanAllowed() public {
         deal(address(0xDEADBEEF), 1e18);
         vm.prank(address(0xDEADBEEF));
@@ -460,6 +461,23 @@ contract NativeVaultPaymentProcessorTest is Test {
 
         paymentProcessor.deposit{value: 1e18 - 1}(1e18 - 1, address(this));
         paymentProcessor.withdraw(1e18, address(this), address(this));
+    }
+
+    function testRedeemInsufficientFunds() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentProcessor.InsufficientFunds.selector,
+                address(paymentProcessor),
+                0,
+                1e18
+            )
+        );
+        paymentProcessor.redeem(1e18, address(this), address(this));
+    }
+
+    function testRedeemZero() public {
+        vm.expectRevert("ZERO_ASSETS");
+        paymentProcessor.redeem(0, address(this), address(this));
     }
 
     function testFailRedeemMoreThanAllowed() public {
@@ -486,9 +504,12 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
         assertEq(address(maliciousContract).balance, 0);
 
+        // Contract calls deposit() with 1Eth, then tries to withdraw twice
         vm.prank(address(maliciousContract));
         paymentProcessor.withdraw(1e18, address(maliciousContract), address(maliciousContract));
 
+        // Ensure balances have been correctly adjusted (i.e. we're burning tokens/adjusting state)
+        // before attempting to pay the user
         assertEq(paymentProcessor.totalSupply(), 9e18);
         assertEq(paymentProcessor.totalAssets(), 9e18);
         assertEq(paymentProcessor.balanceOf(address(maliciousContract)), 8e18);
@@ -511,9 +532,12 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
         assertEq(address(maliciousContract).balance, 0);
 
+        // Contract calls mint() with 1Eth, then tries to redeem twice
         vm.prank(address(maliciousContract));
         paymentProcessor.redeem(1e18, address(maliciousContract), address(maliciousContract));
 
+        // Ensure balances have been correctly adjusted (i.e. we're burning tokens/adjusting state)
+        // before attempting to pay the user
         assertEq(paymentProcessor.totalSupply(), 9e18);
         assertEq(paymentProcessor.totalAssets(), 9e18);
         assertEq(paymentProcessor.balanceOf(address(maliciousContract)), 8e18);

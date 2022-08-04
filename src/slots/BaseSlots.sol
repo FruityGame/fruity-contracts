@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "solmate/utils/ReentrancyGuard.sol";
-import "solmate/mixins/ERC4626.sol";
-import "solmate/tokens/ERC20.sol";
-
-import "src/libraries/Winline.sol";
-import "src/libraries/Bloom.sol";
 import "src/libraries/Board.sol";
 import "src/randomness/RandomnessBeacon.sol";
 import "src/payment/PaymentProcessor.sol";
@@ -34,16 +28,18 @@ struct SlotSession {
     uint256 winlineCount;
 }
 
+// Largest symbol that can be parsed from each 4 bit section of the board
+uint256 constant MAX_SYMBOL = 15;
 // Default Jackpot is a 1/1024 chance if the largest symbol is hit
 uint256 constant JACKPOT_WIN = (1 << 5) - 1;
 
-// A winline based contract that matches from left to right
+// Base contract for other Slots contracts to derive from with core logic
 abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     SlotParams public params;
     uint256 public jackpotWad;
 
-    event BetPlaced(address user, uint256 betId);
-    event BetFulfilled(address user, uint256 board, uint256 payoutWad);
+    event BetPlaced(address indexed user, uint256 betId);
+    event BetFulfilled(address indexed user, uint256 board, uint256 payoutWad);
 
     error BetTooSmall(uint256 userCredits, uint256 minCredits);
     error BetTooLarge(uint256 userCredits, uint256 maxCredits);
@@ -67,6 +63,11 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
         _;
     }
 
+    modifier isNotScatter(uint256 symbol, SlotParams memory _params) {
+        require(symbol != _params.scatterSymbol, "Symbol cannot be a scatter symbol");
+        _;
+    }
+
     constructor(SlotParams memory slotParams) {
         params = slotParams;
     }
@@ -74,6 +75,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     /*
         Core Logic
     */
+
     function beginBet(SlotSession memory session) internal returns (uint256 requestId) {
         takePayment(session);
 
@@ -117,10 +119,14 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     function checkScatter(
         uint256 board,
         SlotParams memory _params
-    ) internal pure returns (uint256 count) {
+    ) internal pure virtual returns (uint256 count) {
         for (uint256 i = 0; i < _params.reels * _params.rows; ++i) {
             if (Board.get(board, i) == _params.scatterSymbol) ++count;
         }
+    }
+
+    function rollJackpot(uint256 randomness) internal pure virtual returns (bool) {
+        return (randomness & JACKPOT_WIN) ^ JACKPOT_WIN == 0;
     }
 
     function resolveSymbol(
@@ -131,14 +137,15 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
         SlotParams memory _params
     ) internal virtual
         isValidSymbol(symbol, _params)
+        isNotScatter(symbol, _params)
     returns (uint256 payoutWad) {
         if (count > _params.reels / 2) {
-            if (symbol == _params.symbols && (randomness & JACKPOT_WIN) ^ JACKPOT_WIN == 0) {
+            if (symbol == _params.symbols && rollJackpot(randomness)) {
                 payoutWad += jackpotWad;
                 jackpotWad = 0;
             }
             payoutWad += session.betWad * (
-                (((symbol + 1) * 15) / (_params.symbols + 1)) *
+                (((symbol + 1) * MAX_SYMBOL) / (_params.symbols + 1)) *
                 (count - (_params.reels / 2))
             );
         }
