@@ -38,7 +38,7 @@ struct SlotSession {
 uint256 constant JACKPOT_WIN = (1 << 5) - 1;
 
 // A winline based contract that matches from left to right
-abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, ReentrancyGuard {
+abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     SlotParams public params;
     uint256 public jackpotWad;
 
@@ -62,6 +62,11 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, ReentrancyGua
         _;
     }
 
+    modifier isValidSymbol(uint256 symbol, SlotParams memory _params) {
+        require(symbol <= _params.symbols, "Invalid symbol parsed from board for this contract");
+        _;
+    }
+
     constructor(SlotParams memory slotParams) {
         params = slotParams;
     }
@@ -77,15 +82,16 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, ReentrancyGua
         emit BetPlaced(session.user, requestId);
     }
 
-    function cancelBet(uint256 requestId) public nonReentrant() {
+    function cancelBet(uint256 requestId) public {
         SlotSession memory session = getSession(requestId);
         if (session.user != msg.sender) revert InvalidSession(msg.sender, requestId);
 
-        refund(session);
+        // End before refund to prevent reentrancy attacks
         endSession(requestId);
+        refund(session);
     }
 
-    function fulfillRandomness(uint256 requestId, uint256 randomness) internal override nonReentrant() {
+    function fulfillRandomness(uint256 requestId, uint256 randomness) internal override {
         SlotSession memory session = getSession(requestId);
         SlotParams memory _params = params;
 
@@ -98,12 +104,13 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, ReentrancyGua
             checkScatter(board, _params);
         }
 
+        // End session before payout to prevent reentrancy attacks
+        endSession(requestId);
         // Payout remaining balance if we don't have enough to cover the win
         uint256 balanceWad = availableAssets();
         if (payoutWad > balanceWad) payoutWad = balanceWad;
         if (payoutWad > 0) payout(session.user, payoutWad);
 
-        endSession(requestId);
         emit BetFulfilled(session.user, board, payoutWad);
     }
 
@@ -122,7 +129,9 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, ReentrancyGua
         uint256 randomness,
         SlotSession memory session,
         SlotParams memory _params
-    ) internal virtual returns (uint256 payoutWad) {
+    ) internal virtual
+        isValidSymbol(symbol, _params)
+    returns (uint256 payoutWad) {
         if (count > _params.reels / 2) {
             if (symbol == _params.symbols && (randomness & JACKPOT_WIN) ^ JACKPOT_WIN == 0) {
                 payoutWad += jackpotWad;

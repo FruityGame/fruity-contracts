@@ -25,7 +25,6 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS - 1e18);
         assertEq(address(paymentProcessor).balance, FUNDS + 1e18);
         assertEq(paymentProcessor.balanceExternal(), FUNDS + 1e18);
-        assertEq(paymentProcessor.preDepositCalls(), 1);
     }
 
     function testDepositInvalidFunds() public {
@@ -43,7 +42,6 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, FUNDS);
         assertEq(paymentProcessor.balanceExternal(), FUNDS);
-        assertEq(paymentProcessor.preDepositCalls(), 0);
     }
 
     function testWithdraw() public {
@@ -52,7 +50,6 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS + 1e18);
         assertEq(address(paymentProcessor).balance, FUNDS - 1e18);
         assertEq(paymentProcessor.balanceExternal(), FUNDS - 1e18);
-        assertEq(paymentProcessor.preWithdrawCalls(), 1);
     }
 
     function testWithdrawInsufficientFunds() public {
@@ -69,6 +66,5 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, FUNDS);
         assertEq(paymentProcessor.balanceExternal(), FUNDS);
-        assertEq(paymentProcessor.preWithdrawCalls(), 0);
     }
 }

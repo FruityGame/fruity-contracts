@@ -52,18 +52,24 @@ abstract contract MultiLineSlots is BaseSlots {
         uint256 winline,
         SlotParams memory _params
     ) internal pure returns(uint256 symbol, uint256 count) {
-        // Get the starting symbol from the board
-        symbol = Board.getFrom(board, Winline.getNibbleSingleLine(winline, 0), 0, _params.reels);
-        require(symbol <= _params.symbols, "Invalid symbol parsed from board for this contract");
-        if (symbol == _params.scatterSymbol) return (0, 0); // Don't want to parse scatters
+        // Set our first symbol to be the wildcard, this is overwritten in the loop later
+        // on if the first symbol we parse from the board doesn't match this
+        symbol = _params.wildSymbol;
 
-        for (count = 1; count < _params.reels; ++count) {
+        for (count = 0; count < _params.reels; ++count) {
             uint256 rowIndex = Winline.getNibbleSingleLine(winline, count);
             uint256 boardSymbol = Board.getFrom(board, rowIndex, count, _params.reels);
 
-            // If we've got no match and the symbol on the board isn't a Wildcard, STOP THE COUNT
+            // If our current symbol and the parsed symbol don't match, and the parsed symbol isn't a wild
             if (boardSymbol != symbol && boardSymbol != _params.wildSymbol) {
-                break;
+                // If our current symbol isn't a wildcard (see explanation above)
+                if (symbol != _params.wildSymbol) break;
+
+                // This block of logic is only ran the first time we find a symbol that isn't a
+                // wildcard on the board, therefore it's not being ran each iteration
+                if (boardSymbol == _params.scatterSymbol) return (0, 0);
+
+                symbol = boardSymbol;
             }
         }
     }

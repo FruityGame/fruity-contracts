@@ -32,18 +32,19 @@ abstract contract SinglePaylineSlots is BaseSlots {
         uint256 board,
         SlotParams memory _params
     ) internal pure returns(uint256 symbol, uint256 count) {
-        // Get the starting symbol from the board
         uint256 middleRow = _params.rows / 2;
-        symbol = Board.getFrom(board, middleRow, 0, _params.reels);
-        require(symbol <= _params.symbols, "Invalid symbol parsed from board for this contract");
-        if (symbol == _params.scatterSymbol) return (0, 0); // Don't want to parse scatters
-
-        for (count = 1; count < _params.reels; ++count) {
+        symbol = _params.wildSymbol;
+        for (count = 0; count < _params.reels; ++count) {
             uint256 boardSymbol = Board.getFrom(board, middleRow, count, _params.reels);
 
             // If we've got no match and the symbol on the board isn't a Wildcard, STOP THE COUNT
             if (boardSymbol != symbol && boardSymbol != _params.wildSymbol) {
-                break;
+                if (symbol != _params.wildSymbol) break;
+
+                // We should only ever reach this branch once, therefore it's not being ran each iteration
+                if (boardSymbol == _params.scatterSymbol) return (0, 0);
+
+                symbol = boardSymbol;
             }
         }
     }
