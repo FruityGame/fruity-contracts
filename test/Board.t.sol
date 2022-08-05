@@ -13,7 +13,7 @@ contract BoardTest is Test {
     function testSetup() public {
         // Expected board outcome:
         // 2:[0000|0110|0010|0000|0100] 1:[0001|0000|0010|0000|0100] 0:[0001|0000|0011|0000|0101]
-        SlotParams memory params = SlotParams(3, 5, 6, 255, 255, 255, 95, 0, 5, 1e18);
+        SlotParams memory params = SlotParams(3, 5, 6, 255, 255, 255, 95, 0, 5, 500, 1e18);
         uint256 layout = Board.generate(MAX_INT, params);
 
         // Check Row 0
@@ -40,7 +40,7 @@ contract BoardTest is Test {
 
     function testGenerateInvalidSize() public {
         // Params with 13 columns (reels), 0 rows
-        SlotParams memory params = SlotParams(0, 13, 6, 255, 255, 255, 95, 0, 5, 1e18);
+        SlotParams memory params = SlotParams(0, 13, 6, 255, 255, 255, 95, 0, 5, 500, 1e18);
         vm.expectRevert("Invalid board size provided");
         uint256 layout = Board.generate(MAX_INT, params);
         assertEq(layout, 0);
@@ -57,13 +57,13 @@ contract BoardTest is Test {
     }
 
     function testGenerateMaxBoardSize() public {
-        SlotParams memory params = SlotParams(8, 8, 15, 255, 255, 255, 95, 0, 5, 1e18);
+        SlotParams memory params = SlotParams(8, 8, 15, 255, 255, 255, 95, 0, 5, 500, 1e18);
         Board.generate(MAX_INT, params);
     }
 
     function testGenerateInvalidSymbols() public {
         // Params with 16 symbols
-        SlotParams memory params = SlotParams(3, 5, 16, 255, 255, 255, 95, 0, 5, 1e18);
+        SlotParams memory params = SlotParams(3, 5, 16, 255, 255, 255, 95, 0, 5, 500, 1e18);
         vm.expectRevert("Invalid number of symbols provided");
         Board.generate(MAX_INT, params);
 
@@ -74,7 +74,7 @@ contract BoardTest is Test {
     }
 
     function testGenerateInvalidPayoutConstant() public {
-        SlotParams memory params = SlotParams(3, 5, 6, 255, 255, 255, 0, 0, 5, 1e18);
+        SlotParams memory params = SlotParams(3, 5, 6, 255, 255, 255, 0, 0, 5, 500, 1e18);
         vm.expectRevert("Invalid payout constant provided");
         Board.generate(MAX_INT, params);
     }
@@ -84,7 +84,7 @@ contract BoardTest is Test {
             MAX_INT,
             SlotParams(
                 uint16(entropy % 8) + 1,    // columns
-                uint32(entropy % 8) + 1,    // rows
+                uint16(entropy % 8) + 1,    // rows
                 uint32(entropy % 15) + 1,   // symbolCount
                 uint32(0),                  // wild
                 uint32(0),                  // scatter
@@ -92,6 +92,7 @@ contract BoardTest is Test {
                 uint32(entropy % 1000) + 1, // payoutConstant
                 uint32(entropy % 100),      // payoutBottomLine
                 uint16(0),                  // minBet
+                uint16(0),                  // maxJackpot
                 uint256(0)                  // creditSize
             )
         );

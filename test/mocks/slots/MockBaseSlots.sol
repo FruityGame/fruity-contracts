@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import "test/mocks/slots/jackpot/MockLocalJackpotResolver.sol";
 import "src/slots/BaseSlots.sol";
-import "src/slots/jackpot/LocalJackpotResolver.sol";
 
-contract MockBaseSlots is BaseSlots, LocalJackpotResolver {
+contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
     uint256 public processSessionResult = 0;
     uint256 public balance = 0;
 
@@ -46,7 +46,7 @@ contract MockBaseSlots is BaseSlots, LocalJackpotResolver {
         _deposit(_session.user, _session.betWad);
     }
 
-    function takeJackpot(SlotSession memory _session) internal override {
+    function takeJackpot(SlotSession memory _session, SlotParams memory _params) internal override {
         jackpotWad += _session.betWad / 3;
     }
 
@@ -129,10 +129,6 @@ contract MockBaseSlots is BaseSlots, LocalJackpotResolver {
     */
     function setProcessSessionResult(uint256 result) external {
         processSessionResult = result;
-    }
-
-    function setJackpot(uint256 jackpot) external {
-        jackpotWad = jackpot;
     }
 
     function setBalance(uint256 balanceWad) external {

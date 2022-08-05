@@ -2,96 +2,85 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "test/mocks/slots/MockMuliLineSlots.sol";
+import "test/mocks/slots/MockSingleLineSlots.sol";
 import "test/mocks/MockChainlinkVRF.sol";
 
 import "src/libraries/Board.sol";
-import "src/payment/PaymentProcessor.sol";
+//import "src/payment/PaymentProcessor.sol";
 
 contract SlotsTest is Test {
-    // 01|01|01|01|01
-    uint256 constant WINLINE = 341;
-    // 01|10|11|10|01
-    uint256 constant WINLINE_WINNER = 441;
-    // 2:[0000|0000|0001|0000|0000] 1:[0000|0001|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-    uint256 constant BOARD = 281479288520705;
     uint256 constant WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(255))));
-    // Full set of 5x5 winlines, representitive of the lines in mockWinlines()
-    uint256 constant WINLINES_FULL = 536169616821538800036600934927570202961204380927034107000682;
 
     uint32 constant WILDCARD = 4;
     uint32 constant SCATTER = 5;
 
-    MockMuliLineSlots slots;
+    MockSingleLineSlots slots;
 
     receive() external payable {}
     fallback() external payable {}
 
     function setUp() public virtual {
-        slots = new MockMuliLineSlots(
-            SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            mockWinlines()
+        slots = new MockSingleLineSlots(
+            SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18)
         );
     }
 
     function testCheckWinline() public {
-        //                                                                4    3    2    1    0
-        // 2:[0000|0000|0001|0000|0000] 1:[0000|0001|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(BOARD, WINLINE);
-        assertEq(symbol1, 1);
-        assertEq(count1, 1);
+        //                                   4    3    2    1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0001|0000|0000|0000] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(4294967296);
+        assertEq(symbol1, 0);
+        assertEq(count1, 3);
 
-        //                2                       3         1             4                   0
-        // 2:[0000|0000|0001|0000|0000] 1:[0000|0001|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(BOARD, WINLINE_WINNER);
+        //                                   4    3    2    1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0000|0001] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(1048576);
         assertEq(symbol2, 1);
-        assertEq(count2, 5);
+        assertEq(count2, 1);
+
+        //                                   4    3    2    1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0110|0110|0110|0110|0110] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol3, uint256 count3) = slots.checkWinlineExternal(439804231680);
+        assertEq(symbol3, 6);
+        assertEq(count3, 5);
+
+        //                                   4    3    2    1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0110|0110|0110|0110] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol4, uint256 count4) = slots.checkWinlineExternal(27487371264);
+        assertEq(symbol4, 6);
+        assertEq(count4, 4);
     }
 
     function testCheckWinlineWithWildcard() public {
-        //                                                                4    3    2    1    0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        uint256 boardWithWildcard = 1125917103554561;
-        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(boardWithWildcard, WINLINE);
-        assertEq(symbol1, 1);
-        assertEq(count1, 1);
+        //                                   4    3   2(W)  1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0100|0000|0000] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(1073741824);
+        assertEq(symbol1, 0);
+        assertEq(count1, 5);
 
-        //               2 (wildcard)             3         1             4                   0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(boardWithWildcard, WINLINE_WINNER);
-        assertEq(symbol2, 1);
-        assertEq(count2, 5);
+        //                                   4    3   2(W)  1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0100|0110|0110] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(1180696576);
+        assertEq(symbol2, 6);
+        assertEq(count2, 3);
 
-        //                                                                4    3    2   1(W)  0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0100|0001]
-        uint256 boardWithWildcardSplit = 1125899923685441;
-        (uint256 symbol3, uint256 count3) = slots.checkWinlineExternal(boardWithWildcardSplit, WINLINE);
-        assertEq(symbol3, 1);
+        //                                   4    3    2    1   0(W)
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0110|0100] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol3, uint256 count3) = slots.checkWinlineExternal(104857600);
+        assertEq(symbol3, 6);
         assertEq(count3, 2);
 
-        //               2 (wildcard)             3         1             4                   0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0100|0001]
-        (uint256 symbol4, uint256 count4) = slots.checkWinlineExternal(boardWithWildcardSplit, WINLINE_WINNER);
-        assertEq(symbol4, 1);
-        assertEq(count4, 3);
-
-        //                                                                4    3    2   1(W) 0(W)
-        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0000|0000] 0:[0000|0000|0000|0100|0100]
-        (uint256 symbol5, uint256 count5) = slots.checkWinlineExternal(68, WINLINE);
-        assertEq(symbol5, 0);
-        assertEq(count5, 5);
-
-        //                                                                4    3    2   1(W) 0(W)
-        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0000|0000] 0:[0100|0100|0100|0100|0100]
-        (uint256 symbol6, uint256 count6) = slots.checkWinlineExternal(279620, WINLINE);
-        assertEq(symbol6, WILDCARD);
-        assertEq(count6, 5);
+        //                                  4(W) 3(W) 2(W) 1(W) 0(W)
+        // 2:[0000|0000|0000|0000|0000] 1:[0100|0100|0100|0100|0100] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol4, uint256 count4) = slots.checkWinlineExternal(293202821120);
+        assertEq(symbol4, WILDCARD);
+        assertEq(count4, 5);
     }
 
-    function testCheckWinlineNoWildcard() public {
+    /*function testCheckWinlineNoWildcard() public {
         // Configure slots to have no wildcard set (set wildcard to 255)
         MockMuliLineSlots slotsNoWildcard = new MockMuliLineSlots(
-            SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 500, 1e18),
+            SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 1e18),
             mockWinlines()
         );
 
@@ -230,29 +219,5 @@ contract SlotsTest is Test {
         slots.cancelBet(betId);
         assertEq(slots.balance(), 0);
         assertEq(slots.jackpotWad(), 0);
-    }
-
-    function testMaxedJackpot() public {
-        SlotParams memory params = slots.getParams();
-        uint256 maxJackpot = params.maxJackpotCredits * params.creditSizeWad;
-
-        // Set to max jackpot
-        slots.setJackpot(maxJackpot);
-        assertEq(slots.jackpotWad(), maxJackpot);
-
-        // Resolve a bet
-        uint256 betId = slots.placeBet(1, WINLINES_FULL);
-        slots.fulfillRandomnessExternal(betId, WINNING_ENTROPY);
-
-        // Ensure jackpot has not incremented beyond the max
-        assertEq(slots.jackpotWad(), maxJackpot);
-    }
-
-    function mockWinlines() private pure returns (uint256[] memory out) {
-        out = new uint256[](20);
-        out[0] = 341; out[1] = 682; out[2] = 1023; out[3] = 630; out[4] = 871;
-        out[5] = 986; out[6] = 671; out[7] = 473; out[8] = 413; out[9] = 854;
-        out[10] = 599; out[11] = 873; out[12] = 637; out[13] = 869; out[14] = 629;
-        out[15] = 474; out[16] = 415; out[17] = 985; out[18] = 669; out[19] = 874;
-    }
+    }*/
 }

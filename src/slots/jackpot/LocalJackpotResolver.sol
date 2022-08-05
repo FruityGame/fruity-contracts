@@ -6,7 +6,11 @@ import "src/slots/jackpot/JackpotResolver.sol";
 abstract contract LocalJackpotResolver is JackpotResolver {
     uint256 public jackpotWad;
 
-    function addToJackpot(uint256 _jackpotWad) internal virtual override {
+    function addToJackpot(uint256 _jackpotWad, uint256 max) internal virtual override {
+        if (jackpotWad + _jackpotWad > max) {
+            _jackpotWad = max - jackpotWad;
+        }
+
         jackpotWad += _jackpotWad;
     }
 

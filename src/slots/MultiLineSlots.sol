@@ -110,7 +110,10 @@ abstract contract MultiLineSlots is BaseSlots {
         _deposit(session.user, session.betWad * session.winlineCount);
     }
 
-    function takeJackpot(SlotSession memory session) internal override {
-        addToJackpot(((session.betWad * session.winlineCount) / 100));
+    function takeJackpot(SlotSession memory session, SlotParams memory _params) internal virtual override {
+        addToJackpot(
+            (session.betWad * session.winlineCount) / 100,
+            _params.maxJackpotCredits * _params.creditSizeWad
+        );
     }
 }

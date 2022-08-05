@@ -2,12 +2,12 @@
 pragma solidity ^0.8;
 
 import "src/slots/SingleLineSlots.sol";
-import "src/slots/jackpot/LocalJackpotResolver.sol";
 
+import "test/mocks/slots/jackpot/MockLocalJackpotResolver.sol";
 import "test/mocks/payment/MockPaymentProcessor.sol";
 import "test/mocks/MockVRF.sol";
 
-contract MockMuliLineSlots is SingleLineSlots, LocalJackpotResolver, MockPaymentProcessor, MockVRF {
+contract MockSingleLineSlots is SingleLineSlots, MockLocalJackpotResolver, MockPaymentProcessor, MockVRF {
     mapping(uint256 => SlotSession) public sessions;
 
     constructor(

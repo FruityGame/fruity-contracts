@@ -67,7 +67,10 @@ abstract contract SingleLineSlots is BaseSlots {
         _deposit(session.user, session.betWad);
     }
 
-    function takeJackpot(SlotSession memory session) internal override {
-        addToJackpot(session.betWad / 100);
+    function takeJackpot(SlotSession memory session, SlotParams memory _params) internal virtual override {
+        addToJackpot(
+            session.betWad / 100,
+            _params.maxJackpotCredits * _params.creditSizeWad
+        );
     }
 }

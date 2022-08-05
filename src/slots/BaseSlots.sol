@@ -10,7 +10,7 @@ import "src/slots/jackpot/JackpotResolver.sol";
 // structs, so all params have to go in the base contract
 struct SlotParams {
     uint16 rows;
-    uint32 reels;
+    uint16 reels;
     uint32 symbols;
     uint32 wildSymbol;
     uint32 scatterSymbol;
@@ -18,6 +18,7 @@ struct SlotParams {
     uint32 payoutConstant;
     uint32 payoutBottomLine;
     uint16 maxBetCredits;
+    uint16 maxJackpotCredits;
     uint256 creditSizeWad;
 }
 
@@ -103,7 +104,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         SlotSession memory session = getSession(requestId);
         SlotParams memory _params = params;
 
-        takeJackpot(session);
+        takeJackpot(session, _params);
 
         uint256 board = Board.generate(randomness, _params);
         uint256 payoutWad = processSession(board, randomness, session, _params);
@@ -169,7 +170,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
 
     function refund(SlotSession memory session) internal virtual;
     function takePayment(SlotSession memory session) internal virtual;
-    function takeJackpot(SlotSession memory session) internal virtual;
+    function takeJackpot(SlotSession memory session, SlotParams memory _params) internal virtual;
 
     function payout(address user, uint256 payoutWad) internal virtual {
         _withdraw(user, payoutWad);
