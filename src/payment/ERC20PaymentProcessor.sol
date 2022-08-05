@@ -9,12 +9,16 @@ abstract contract ERC20PaymentProcessor is PaymentProcessor {
 
     error AllowanceError(address account, uint256 allowance, uint256 wanted);
 
+    // Modifier required because the bet methods exposed in the abstract slots contracts
+    // are payable. This prevents the ERC20 Contracts accepting Eth (will result in user funds being stuck)
     modifier isZeroMsgValue() {
         require(msg.value == 0, "Contract doesn't accept the native token");
         _;
     }
 
     modifier userCanAfford(address user, uint256 betWad) {
+        require(betWad > 0, "Deposit must be greater than zero");
+
         if (token.allowance(user, address(this)) < betWad) {
             revert AllowanceError(user, token.allowance(user, address(this)), betWad);
         }

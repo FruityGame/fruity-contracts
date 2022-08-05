@@ -10,8 +10,12 @@ import "src/libraries/Board.sol";
 // A winline based contract that matches from left to right
 abstract contract MultiLineSlots is BaseSlots {
     mapping(bytes32 => bool) public validWinlines;
+    
+    error InvalidWinlineCount(uint256 count);
 
     constructor(SlotParams memory slotParams, uint256[] memory winlines) BaseSlots(slotParams) {
+        if (winlines.length == 0) revert InvalidParams("Contract must be instantiated with at least 1 winline");
+
         for (uint256 i = 0; i < winlines.length; ++i) {
             validWinlines[bytes32(winlines[i])] = true;
         }
@@ -91,6 +95,8 @@ abstract contract MultiLineSlots is BaseSlots {
             winlines = winlines >> (reelCount * 2);
             ++count;
         }
+
+        if (count == 0) revert InvalidWinlineCount(count);
     }
 
     /*
@@ -105,6 +111,6 @@ abstract contract MultiLineSlots is BaseSlots {
     }
 
     function takeJackpot(SlotSession memory session) internal override {
-        jackpotWad += ((session.betWad * session.winlineCount) / 100);
+        addToJackpot(((session.betWad * session.winlineCount) / 100));
     }
 }

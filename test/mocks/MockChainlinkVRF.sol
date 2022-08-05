@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+/*pragma solidity ^0.8;
 
 import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
@@ -51,4 +51,4 @@ contract MockChainlinkVRF is VRFCoordinatorV2Interface {
     function pendingRequestExists(uint64 subId) external override view returns (bool) { return false; }
     function removeConsumer(uint64 subId, address consumer) external override {}
     function requestSubscriptionOwnerTransfer(uint64 subId, address newOwner) external override {}
-}
+}*/

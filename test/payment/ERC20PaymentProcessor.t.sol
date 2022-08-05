@@ -65,6 +65,18 @@ contract ERC20PaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceExternal(), FUNDS);
     }
 
+    // This prevents an invariant whereby a machine is accepting invalid bets
+    function testDepositZero() public {
+        token.approve(address(paymentProcessor), 1e18);
+
+        vm.expectRevert("Deposit must be greater than zero");
+        paymentProcessor.depositExternal(address(this), 0);
+
+        assertEq(token.balanceOf(address(this)), FUNDS);
+        assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
+        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+    }
+
     function testWithdraw() public {
         paymentProcessor.withdrawExternal(address(this), 1e18);
 
@@ -84,6 +96,15 @@ contract ERC20PaymentProcessorTest is Test {
         );
         paymentProcessor.withdrawExternal(address(this), FUNDS);
 
+        assertEq(token.balanceOf(address(this)), FUNDS);
+        assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
+        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+    }
+
+    function testWithdrawZero() public {
+        paymentProcessor.withdrawExternal(address(this), 0);
+
+        // Ensure balances haven't changed
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
         assertEq(paymentProcessor.balanceExternal(), FUNDS);

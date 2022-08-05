@@ -3,8 +3,8 @@ pragma solidity ^0.8;
 
 import "src/slots/BaseSlots.sol";
 
-// Optimised for single paylines only (although not bytecode optimised lol)
-abstract contract SinglePaylineSlots is BaseSlots {
+// Optimised for single paylines only
+abstract contract SingleLineSlots is BaseSlots {
     constructor(SlotParams memory slotParams) BaseSlots(slotParams) {}
 
     /*
@@ -32,16 +32,23 @@ abstract contract SinglePaylineSlots is BaseSlots {
         uint256 board,
         SlotParams memory _params
     ) internal pure returns(uint256 symbol, uint256 count) {
+        // Get the middle most row of our slots
         uint256 middleRow = _params.rows / 2;
+
+        // Set our first symbol to be the wildcard, this is overwritten in the loop later
+        // on if the first symbol we parse from the board doesn't match this
         symbol = _params.wildSymbol;
         for (count = 0; count < _params.reels; ++count) {
+            // Get from the middleRow index only
             uint256 boardSymbol = Board.getFrom(board, middleRow, count, _params.reels);
 
-            // If we've got no match and the symbol on the board isn't a Wildcard, STOP THE COUNT
+            // If our current symbol and the parsed symbol don't match, and the parsed symbol isn't a wild
             if (boardSymbol != symbol && boardSymbol != _params.wildSymbol) {
+                // If our current symbol isn't a wildcard (see explanation above)
                 if (symbol != _params.wildSymbol) break;
 
-                // We should only ever reach this branch once, therefore it's not being ran each iteration
+                // This block of logic is only ran the first time we find a symbol that isn't a
+                // wildcard on the board, therefore it's not being ran each iteration
                 if (boardSymbol == _params.scatterSymbol) return (0, 0);
 
                 symbol = boardSymbol;
@@ -61,6 +68,6 @@ abstract contract SinglePaylineSlots is BaseSlots {
     }
 
     function takeJackpot(SlotSession memory session) internal override {
-        jackpotWad += (session.betWad / 100);
+        addToJackpot(session.betWad / 100);
     }
 }

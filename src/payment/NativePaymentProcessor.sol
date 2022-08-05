@@ -7,6 +7,7 @@ abstract contract NativePaymentProcessor is PaymentProcessor {
     error PaymentError(address user, uint256 payoutWad);
 
     modifier userCanAfford(uint256 betWad) {
+        require(betWad > 0, "Deposit must be greater than zero");
         if (msg.value != betWad) revert InsufficientFunds(msg.sender, msg.value, betWad);
         _;
     }

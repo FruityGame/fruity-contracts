@@ -2,8 +2,9 @@
 pragma solidity ^0.8;
 
 import "src/slots/BaseSlots.sol";
+import "src/slots/jackpot/LocalJackpotResolver.sol";
 
-contract MockBaseSlots is BaseSlots {
+contract MockBaseSlots is BaseSlots, LocalJackpotResolver {
     uint256 public processSessionResult = 0;
     uint256 public balance = 0;
 

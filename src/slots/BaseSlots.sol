@@ -4,6 +4,7 @@ pragma solidity ^0.8;
 import "src/libraries/Board.sol";
 import "src/randomness/RandomnessBeacon.sol";
 import "src/payment/PaymentProcessor.sol";
+import "src/slots/jackpot/JackpotResolver.sol";
 
 // Solidity storage unfortunately doesn't pack nested
 // structs, so all params have to go in the base contract
@@ -34,9 +35,8 @@ uint256 constant MAX_SYMBOL = 15;
 uint256 constant JACKPOT_WIN = (1 << 5) - 1;
 
 // Base contract for other Slots contracts to derive from with core logic
-abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
+abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver {
     SlotParams public params;
-    uint256 public jackpotWad;
 
     event BetPlaced(address indexed user, uint256 betId);
     event BetFulfilled(address indexed user, uint256 board, uint256 payoutWad);
@@ -44,6 +44,8 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     error BetTooSmall(uint256 userCredits, uint256 minCredits);
     error BetTooLarge(uint256 userCredits, uint256 maxCredits);
     error InvalidSession(address user, uint256 betId);
+
+    error InvalidParams(bytes message);
 
     modifier canAfford(uint256 payoutWad) override {
         if (payoutWad > availableAssets()) {
@@ -68,7 +70,11 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
         _;
     }
 
-    constructor(SlotParams memory slotParams) {
+    modifier sanitizeParams(SlotParams memory _params) virtual {
+        _;
+    }
+
+    constructor(SlotParams memory slotParams) sanitizeParams(slotParams) {
         params = slotParams;
     }
 
@@ -141,8 +147,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
     returns (uint256 payoutWad) {
         if (count > _params.reels / 2) {
             if (symbol == _params.symbols && rollJackpot(randomness)) {
-                payoutWad += jackpotWad;
-                jackpotWad = 0;
+                payoutWad += consumeJackpot();
             }
             payoutWad += session.betWad * (
                 (((symbol + 1) * MAX_SYMBOL) / (_params.symbols + 1)) *
@@ -170,12 +175,13 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor {
         _withdraw(user, payoutWad);
     }
 
-    function availableAssets() public view returns (uint256) {
+    function availableAssets() public view virtual returns (uint256) {
         uint256 balanceWad = _balance();
-        if (balanceWad < jackpotWad) return 0;
+        uint256 _jackpotWad = getJackpot();
+        if (balanceWad < _jackpotWad) return 0;
 
         // Ensure we reserve the jackpot
-        return balanceWad - jackpotWad;
+        return balanceWad - _jackpotWad;
     }
 
     /*

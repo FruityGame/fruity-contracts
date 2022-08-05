@@ -45,6 +45,11 @@ contract NativePaymentProcessorTest is Test {
         assertEq(paymentProcessor.balanceExternal(), FUNDS);
     }
 
+    // This prevents an invariant whereby a machine is accepting invalid bets
+    function testFailDepositZero() public {
+        paymentProcessor.depositExternal(address(this), 0);
+    }
+
     function testWithdraw() public {
         paymentProcessor.withdrawExternal(address(this), 1e18);
 
@@ -79,5 +84,14 @@ contract NativePaymentProcessorTest is Test {
         assertEq(address(maliciousContract).balance, 2e18);
         assertEq(address(paymentProcessor).balance, FUNDS - 2e18);
         assertEq(paymentProcessor.balanceExternal(), FUNDS - 2e18);
+    }
+
+    function testWithdrawZero() public {
+        paymentProcessor.withdrawExternal(address(this), 0);
+
+        // Ensure balances haven't changed
+        assertEq(address(this).balance, FUNDS);
+        assertEq(address(paymentProcessor).balance, FUNDS);
+        assertEq(paymentProcessor.balanceExternal(), FUNDS);
     }
 }
