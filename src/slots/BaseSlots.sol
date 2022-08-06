@@ -41,6 +41,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
 
     event BetPlaced(address indexed user, uint256 betId);
     event BetFulfilled(address indexed user, uint256 board, uint256 payoutWad);
+    event BetCancelled(address indexed user, uint256 betId);
 
     error BetTooSmall(uint256 userCredits, uint256 minCredits);
     error BetTooLarge(uint256 userCredits, uint256 maxCredits);
@@ -95,6 +96,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         SlotSession memory session = getSession(requestId);
         if (session.user != msg.sender) revert InvalidSession(msg.sender, requestId);
 
+        emit BetCancelled(msg.sender, requestId);
         // End before refund to prevent reentrancy attacks
         endSession(requestId);
         refund(session);

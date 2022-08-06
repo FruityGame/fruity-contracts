@@ -20,6 +20,7 @@ contract BaseSlotsTest is Test {
     
     event BetPlaced(address indexed user, uint256 betId);
     event BetFulfilled(address indexed user, uint256 board, uint256 payoutWad);
+    event BetCancelled(address indexed user, uint256 betId);
 
     MockBaseSlots slots;
 
@@ -194,6 +195,10 @@ contract BaseSlotsTest is Test {
         SlotSession memory session = SlotSession(address(this), 1e18, 0, 0);
 
         slots.beginBetExternal(session);
+
+        // Should emit an event to notify the front end
+        vm.expectEmit(true, false, false, true);
+        emit BetCancelled(address(this), 1);
         slots.cancelBet(1);
 
         assertEq(slots.balance(), 0);
