@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: MIT
-/*pragma solidity ^0.8;
+pragma solidity ^0.8;
 
 import "src/slots/MultiLineSlots.sol";
-import "src/slots/NativeTokenSlots.sol";
+import "src/slots/jackpot/LocalJackpotResolver.sol";
+import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 import "src/randomness/consumer/Chainlink.sol";
 
-contract Fruity is MultiLineSlots, NativeTokenSlots, ChainlinkConsumer {
+contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProcessor, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
     constructor(
-        VaultParams memory vaultParams,
+        address asset, string memory name, string memory symbol,
         VRFParams memory vrfParams
     )
         ChainlinkConsumer(vrfParams)
-        NativeTokenSlots(vaultParams)
-        MultiLineSlots(getInitialParams(), vaultParams, getInitialWinlines())
+        ERC20VaultPaymentProcessor(asset, name, symbol)
+        MultiLineSlots(getInitialParams(), getInitialWinlines())
     {}
 
     function getSession(uint256 betId) internal view override
@@ -46,6 +47,6 @@ contract Fruity is MultiLineSlots, NativeTokenSlots, ChainlinkConsumer {
     }
 
     function getInitialParams() private pure returns (SlotParams memory out) {
-        out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 1e15);
+        out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 500, 1e15);
     }
-}*/
+}
