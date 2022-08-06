@@ -11,12 +11,16 @@ abstract contract PooledJackpotResolver is JackpotResolver {
             _jackpotWad = max - jackpotWad;
         }
 
+        emit JackpotChanged(jackpotWad, jackpotWad + _jackpotWad);
+
         jackpotWad += _jackpotWad;
     }
 
     function consumeJackpot() internal virtual override returns (uint256 out) {
         out = jackpotWad;
         jackpotWad = 0;
+
+        emit JackpotChanged(out, jackpotWad);
     }
 
     function getJackpot() internal view virtual override returns (uint256) {

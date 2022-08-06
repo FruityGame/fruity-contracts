@@ -141,6 +141,30 @@ contract SlotsTest is Test {
         slots.countWinlinesExternal(0);
     }
 
+    function testCountWinlinesFuzz(uint256 entropy) public {
+        // Generate a random selection of winlines from the above entropy
+        // ( yes its bad I know, no I'm not sorry (<: )
+        bool[] memory lines = new bool[](20);
+        uint256 winlines = WINLINES_FULL & 1023;
+        uint256 winlineCount = 1;
+        lines[0] = true;
+        // Pick a random number of winlines between 1-20
+        for (uint256 j = (entropy % 19) + 1; j < 20; j++) {
+            // Generate a pseudorandom index
+            uint256 index = (2**j) % (20 - j);
+
+            // If we've not already chosen this winline, add it to the lines and increment
+            // the expected count
+            if (!lines[index]) {
+                winlines = (winlines << 10) | ((WINLINES_FULL >> 10 * index) & 1023);
+                lines[index] = true;
+                winlineCount++;
+            }
+        }
+
+        assertEq(slots.countWinlinesExternal(winlines), winlineCount);
+    }
+
     function testCountWinlinesDuplicate() public {
         uint256 duplicateWinline = (WINLINE << 10) | WINLINE;
 
@@ -219,6 +243,19 @@ contract SlotsTest is Test {
         assertEq(slots.jackpotWad(), 0);
     }
 
+    function testCancelBetSingleWinline() public {
+        uint256 betId = slots.placeBet(1, WINLINE);
+
+        // Ensure 20 * (credit) has been added to the balance
+        assertEq(slots.balance(), 1e18);
+        assertEq(slots.jackpotWad(), 0);
+
+        // Ensure cancel bet factors in the number of winlines in our bet
+        slots.cancelBet(betId);
+        assertEq(slots.balance(), 0);
+        assertEq(slots.jackpotWad(), 0);
+    }
+
     function testCancelBetMultipleWinlines() public {
         uint256 betId = slots.placeBet(1, WINLINES_FULL);
 
@@ -231,6 +268,73 @@ contract SlotsTest is Test {
         assertEq(slots.balance(), 0);
         assertEq(slots.jackpotWad(), 0);
     }
+
+    function testCancelBetMaxValue() public {
+        uint256 betId = slots.placeBet(5, WINLINES_FULL);
+
+        // Ensure 20 * 5 * (credit) has been added to the balance
+        assertEq(slots.balance(), 5 * 20e18);
+        assertEq(slots.jackpotWad(), 0);
+
+        // Ensure cancel bet factors in the number of winlines in our bet
+        slots.cancelBet(betId);
+        assertEq(slots.balance(), 0);
+        assertEq(slots.jackpotWad(), 0);
+    }
+
+    // TODO: Mock resolveSymbol with MockMultiLineSlots to enable this test
+    /*function testPlaceCancelFulfillBetRandomWinlineFuzz(bytes32 entropy) public {
+        uint256 randomness = uint256(keccak256(abi.encodePacked(entropy)));
+        uint256 credits = (randomness % 5) + 1;
+
+        // Generate a random selection of winlines from the above entropy
+        // ( yes its bad I know, no I'm not sorry (<: )
+        bool[] memory lines = new bool[](20);
+        uint256 winlines = WINLINES_FULL & 1023;
+        uint256 winlineCount = 1;
+        lines[0] = true;
+        // Pick a random number of winlines between 1-20
+        for (uint256 j = (randomness % 19) + 1; j < 20; j++) {
+            // Generate a pseudorandom index
+            uint256 index = (2**j) % (20 - j);
+
+            // If we've not already chosen this winline, add it to the lines and increment
+            // the expected count
+            if (!lines[index]) {
+                winlines = (winlines << 10) | ((WINLINES_FULL >> 10 * index) & 1023);
+                lines[index] = true;
+                winlineCount++;
+            }
+        }
+
+        // Ensure we don't payout so we don't skew the asserts below
+        vm.mockCall(
+            address(slots),
+            abi.encodeWithSelector(BaseSlots.resolveSymbol.selector),
+            abi.encode(0)
+        );
+
+        // Place our bet
+        uint256 betId = slots.placeBet(credits, winlines);
+        assertEq(slots.balance(), credits * 1e18 * winlineCount);
+        assertEq(slots.jackpotWad(), 0);
+
+        // Cancel our bet
+        slots.cancelBet(betId);
+        assertEq(slots.balance(), 0);
+        assertEq(slots.jackpotWad(), 0);
+
+        // Place our bet and fulfill it
+        slots.fulfillRandomnessExternal(
+            slots.placeBet(credits, winlines),
+            0
+        );
+
+        emit log_uint(winlines);
+        emit log_uint(slots.countWinlinesExternal(winlines));
+        assertEq(slots.balance(), credits * 1e18 * winlineCount);
+        assertEq(slots.jackpotWad(), credits * 1e16 * (winlineCount + 1));
+    }*/
 
     function testMaxedJackpot() public {
         SlotParams memory params = slots.getParams();

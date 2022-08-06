@@ -77,117 +77,60 @@ contract SlotsTest is Test {
         assertEq(count4, 5);
     }
 
-    /*function testCheckWinlineNoWildcard() public {
+    function testCheckWinlineNoWildcard() public {
         // Configure slots to have no wildcard set (set wildcard to 255)
-        MockMuliLineSlots slotsNoWildcard = new MockMuliLineSlots(
-            SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 1e18),
-            mockWinlines()
+        MockSingleLineSlots slotsNoWildcard = new MockSingleLineSlots(
+            SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 500, 1e18)
         );
 
-        //                                                                4    3    2    1    0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        uint256 boardWithWildcard = 1125917103554561;
-        (uint256 symbol1, uint256 count1) = slotsNoWildcard.checkWinlineExternal(boardWithWildcard, WINLINE);
-        assertEq(symbol1, 1);
-        assertEq(count1, 1);
+        // Test with 'wildcard' in middle
+        //                                   4    3   2(W)  1    0
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0100|0000|0000] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol1, uint256 count1) = slotsNoWildcard.checkWinlineExternal(1073741824);
+        assertEq(symbol1, 0);
+        assertEq(count1, 2);
 
-        //               2 (wildcard)             3         1             4                   0
-        // 2:[0000|0000|0100|0000|0000] 1:[0000|0000|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        (uint256 symbol2, uint256 count2) = slotsNoWildcard.checkWinlineExternal(boardWithWildcard, WINLINE_WINNER);
-        assertEq(symbol2, 1);
-        assertEq(count2, 2);
+        // Test with 'wildcard' start
+        //                                   4    3    2    1   0(W)
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0110|0100] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol2, uint256 count2) = slotsNoWildcard.checkWinlineExternal(104857600);
+        assertEq(symbol2, 4);
+        assertEq(count2, 1);
     }
 
     function testCheckWinlineWithScatterStart() public {
-        //                                                                4    3    2    1   0(S)
-        // 2:[0000|0000|0001|0000|0000] 1:[0000|0001|0000|0001|0000] 0:[0001|0000|0000|0000|0101]
-        uint256 boardWithScatterStart = 281479288520709;
-        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(boardWithScatterStart, WINLINE);
+        //                                   4    3    2    1   0(S)
+        // 2:[0000|0000|0000|0000|0000] 1:[0101|0101|0101|0101|0101] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol1, uint256 count1) = slots.checkWinlineExternal(366503526400);
         assertEq(symbol1, 0);
         assertEq(count1, 0);
 
-        //                2                       3(S)      1             4                   0
-        // 2:[0000|0000|0001|0000|0000] 1:[0000|0101|0000|0001|0000] 0:[0001|0000|0000|0000|0001]
-        uint256 boardWithScatterMiddle = 281496468389889;
-        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(boardWithScatterMiddle, WINLINE_WINNER);
-        assertEq(symbol2, 1);
-        assertEq(count2, 3);
+        //                                   4    3    2    1   0(S)
+        // 2:[0000|0000|0000|0000|0000] 1:[0000|0000|0000|0000|0101] 0:[0000|0000|0000|0000|0000]
+        (uint256 symbol2, uint256 count2) = slots.checkWinlineExternal(5242880);
+        assertEq(symbol2, 0);
+        assertEq(count2, 0);
     }
 
-    function testCountWinlines() public {
-        assertEq(slots.countWinlinesExternal(WINLINE), 1);
-        // Count 20 unique winlines for 5x5 slots
-        assertEq(slots.countWinlinesExternal(WINLINES_FULL), 20);
-    }
-
-    function testCountWinlinesZero() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MultiLineSlots.InvalidWinlineCount.selector,
-                0
-            )
-        );
-        slots.countWinlinesExternal(0);
-    }
-
-    function testCountWinlinesDuplicate() public {
-        uint256 duplicateWinline = (WINLINE << 10) | WINLINE;
-
-        vm.expectRevert("Duplicate item detected");
-        slots.countWinlinesExternal(duplicateWinline);
-    }
-
-    function testCountWinlinesInvalidWinline() public {
-        vm.expectRevert("Invalid winline parsed for contract");
-        slots.countWinlinesExternal(614);
-    }
-
-    function testPlaceBetSingleWinline() public {
-        uint256 betId = slots.placeBet(1, WINLINE);
+    function testPlaceBetFuzz(uint256 entropy) public {
+        uint256 credits = (entropy % 5) + 1;
+        uint256 betId = slots.placeBet(credits);
         slots.fulfillRandomnessExternal(betId, WINNING_ENTROPY);
 
-        // Ensure our bet has been taken and we've been
-        // charged 1 (winline count) * 1e18 (credit)
-        assertEq(slots.balance(), 1e18);
-        // In WEI, should equal 0.333333333333333333 Token
-        assertEq(slots.jackpotWad(), 1e16);
-    }
-
-    function testPlaceBetNoWinlines() public {        
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MultiLineSlots.InvalidWinlineCount.selector,
-                0
-            )
-        );
-        slots.placeBet(1, 0);
-
-        // Ensure no bet has been consumed
-        assertEq(slots.balance(), 0);
-        assertEq(slots.jackpotWad(), 0);
-    }
-
-    function testPlaceBetMultipleWinlines() public {
-        uint256 betId = slots.placeBet(1, WINLINES_FULL);
-        // Ensure 20 * (credit) has been added to the balance
-        assertEq(slots.balance(), 20e18);
-
-        slots.fulfillRandomnessExternal(betId, WINNING_ENTROPY);
-        // Ensure 1/100th of the bet (default jackpot configuration)
-        // has been added to jackpot
-        assertEq(slots.jackpotWad(), 20e18 / 100);
+        assertEq(slots.balance(), credits * 1e18);
+        assertEq(slots.jackpotWad(), credits * 1e16);
     }
 
     function testPlaceBetTooManyCredits() public {
         SlotParams memory params = slots.getParams();
-        
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseSlots.BetTooLarge.selector,
                 params.maxBetCredits + 1, params.maxBetCredits
             )
         );
-        slots.placeBet(params.maxBetCredits + 1, WINLINE);
+        slots.placeBet(params.maxBetCredits + 1);
 
         // Ensure no bet has been consumed
         assertEq(slots.balance(), 0);
@@ -201,23 +144,22 @@ contract SlotsTest is Test {
                 0, 1
             )
         );
-        slots.placeBet(0, WINLINE);
+        slots.placeBet(0);
 
         // Ensure no bet has been consumed
         assertEq(slots.balance(), 0);
         assertEq(slots.jackpotWad(), 0);
     }
 
-    function testCancelBetMultipleWinlines() public {
-        uint256 betId = slots.placeBet(1, WINLINES_FULL);
+    function testCancelBetFuzz(uint256 entropy) public {
+        uint256 credits = (entropy % 5) + 1;
+        uint256 betId = slots.placeBet(credits);
 
-        // Ensure 20 * (credit) has been added to the balance
-        assertEq(slots.balance(), 20e18);
+        assertEq(slots.balance(), credits * 1e18);
         assertEq(slots.jackpotWad(), 0);
 
-        // Ensure cancel bet factors in the number of winlines in our bet
         slots.cancelBet(betId);
         assertEq(slots.balance(), 0);
         assertEq(slots.jackpotWad(), 0);
-    }*/
+    }
 }

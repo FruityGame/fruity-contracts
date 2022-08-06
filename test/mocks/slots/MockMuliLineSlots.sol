@@ -50,5 +50,9 @@ contract MockMuliLineSlots is MultiLineSlots, MockLocalJackpotResolver, MockPaym
     function getParams() external view returns (SlotParams memory) {
         return params;
     }
+
+    /*
+        Mock related methods
+    */
 }
 
