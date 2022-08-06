@@ -16,57 +16,57 @@ contract LocalJackpotResolverTest is Test {
     function testAddToJackpot() public {
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(0), uint256(1e18));
-        jackpotResolver.addToJackpotExternal(1e18, 20e18);
+        jackpotResolver._addToJackpotExternal(1e18, 20e18);
 
-        assertEq(jackpotResolver.jackpotWad(), 1e18);
+        assertEq(jackpotResolver.getJackpot(), 1e18);
     }
 
     function testAddToJackpotBeyondMax() public {
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(0), uint256(20e18));
-        jackpotResolver.addToJackpotExternal(25e18, 20e18);
+        jackpotResolver._addToJackpotExternal(25e18, 20e18);
 
-        assertEq(jackpotResolver.jackpotWad(), 20e18);
+        assertEq(jackpotResolver.getJackpot(), 20e18);
 
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(20e18), uint256(20e18));
-        jackpotResolver.addToJackpotExternal(1e1, 20e18);
+        jackpotResolver._addToJackpotExternal(1e1, 20e18);
 
-        assertEq(jackpotResolver.jackpotWad(), 20e18);
+        assertEq(jackpotResolver.getJackpot(), 20e18);
     }
 
     function testAddToJackpotZeroMax() public {
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(0), uint256(0));
-        jackpotResolver.addToJackpotExternal(25e18, 0);
+        jackpotResolver._addToJackpotExternal(25e18, 0);
 
-        assertEq(jackpotResolver.jackpotWad(), 0);
+        assertEq(jackpotResolver.getJackpot(), 0);
 
-        jackpotResolver.addToJackpotExternal(1e18, 1e18);
-        assertEq(jackpotResolver.jackpotWad(), 1e18);
+        jackpotResolver._addToJackpotExternal(1e18, 1e18);
+        assertEq(jackpotResolver.getJackpot(), 1e18);
 
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(1e18), uint256(0));
-        jackpotResolver.addToJackpotExternal(1e18, 0);
+        jackpotResolver._addToJackpotExternal(1e18, 0);
 
-        assertEq(jackpotResolver.jackpotWad(), 0);
+        assertEq(jackpotResolver.getJackpot(), 0);
     }
 
     function testConsumeJackpot() public {
-        jackpotResolver.addToJackpotExternal(1e18, 20e18);
+        jackpotResolver._addToJackpotExternal(1e18, 20e18);
 
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(1e18), uint256(0));
-        jackpotResolver.consumeJackpotExternal();
+        jackpotResolver._consumeJackpotExternal();
 
-        assertEq(jackpotResolver.jackpotWad(), 0);
+        assertEq(jackpotResolver.getJackpot(), 0);
     }
 
     function testConsumeJackpotZero() public {
         vm.expectEmit(true, false, false, true);
         emit JackpotChanged(uint256(0), uint256(0));
-        jackpotResolver.consumeJackpotExternal();
+        jackpotResolver._consumeJackpotExternal();
 
-        assertEq(jackpotResolver.jackpotWad(), 0);
+        assertEq(jackpotResolver.getJackpot(), 0);
     }
 }

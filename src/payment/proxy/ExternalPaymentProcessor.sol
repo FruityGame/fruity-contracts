@@ -12,8 +12,4 @@ abstract contract ExternalPaymentProcessor is PaymentProcessor, Auth {
     function withdrawExternal(address to, uint256 paymentWad) external virtual requiresAuth() {
         _withdraw(to, paymentWad);
     }
-
-    function balanceExternal() external view virtual returns (uint256) {
-        return _balance();
-    }
 }

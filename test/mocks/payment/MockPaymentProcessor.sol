@@ -14,7 +14,7 @@ abstract contract MockPaymentProcessor is PaymentProcessor {
         balance -= paymentWad;
     }
 
-    function _balance() internal view override returns (uint256) {
+    function _balance() public view override returns (uint256) {
         return balance;
     }
 

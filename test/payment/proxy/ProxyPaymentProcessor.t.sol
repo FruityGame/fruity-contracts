@@ -17,19 +17,19 @@ contract ProxyPaymentProcessorTest is Test {
     }
 
     function testCallBalance() public {
-        assertEq(paymentProcessorExternal.balanceExternal(), 0);
-        assertEq(paymentProcessor._balanceExternal(), 0);
+        assertEq(paymentProcessorExternal._balance(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Ensure anyone can call the function
         vm.prank(address(0xDEADBEEF));
-        paymentProcessor._balanceExternal();
+        paymentProcessor._balance();
 
         // Deposit funds into the external contract
         paymentProcessorExternal.depositExternal(address(this), 1e18);
 
         // Ensure the proxy and external contract both report the same balance
-        assertEq(paymentProcessorExternal.balanceExternal(), 1e18);
-        assertEq(paymentProcessor._balanceExternal(), 1e18);
+        assertEq(paymentProcessorExternal._balance(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
     }
 
     function testCallDeposit() public {
@@ -51,8 +51,8 @@ contract ProxyPaymentProcessorTest is Test {
         paymentProcessor._depositExternal(address(paymentProcessor), 1e18);
 
         // Ensure balances are reported as the same
-        assertEq(paymentProcessorExternal.balanceExternal(), 1e18);
-        assertEq(paymentProcessor._balanceExternal(), 1e18);
+        assertEq(paymentProcessorExternal._balance(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
     }
 
     function testCallWithdraw() public {
@@ -76,7 +76,7 @@ contract ProxyPaymentProcessorTest is Test {
         paymentProcessor._withdrawExternal(address(paymentProcessor), 1e18);
 
         // Ensure balances are reported as the same
-        assertEq(paymentProcessorExternal.balanceExternal(), 0);
-        assertEq(paymentProcessor._balanceExternal(), 0);
+        assertEq(paymentProcessorExternal._balance(), 0);
+        assertEq(paymentProcessor._balance(), 0);
     }
 }

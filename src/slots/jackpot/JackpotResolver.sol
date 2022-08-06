@@ -6,5 +6,5 @@ abstract contract JackpotResolver {
 
     function addToJackpot(uint256 _jackpotWad, uint256 max) internal virtual;
     function consumeJackpot() internal virtual returns (uint256 out);
-    function getJackpot() internal view virtual returns (uint256);
+    function getJackpot() public view virtual returns (uint256);
 }

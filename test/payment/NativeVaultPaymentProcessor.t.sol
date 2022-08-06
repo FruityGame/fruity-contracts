@@ -26,7 +26,7 @@ contract NativeVaultPaymentProcessorTest is Test {
 
         assertEq(address(this).balance, FUNDS - 1e18);
         assertEq(address(paymentProcessor).balance, 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
         assertEq(paymentProcessor.totalAssets(), 1e18);
 
         /*
@@ -54,7 +54,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         // Ensure no funds have been taken
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
 
         /*
@@ -75,7 +75,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS - 1e18);
         assertEq(address(paymentProcessor).balance, 1e18);
         assertEq(paymentProcessor.totalAssets(), 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
 
         // Withdraw funds with _withdraw()
         paymentProcessor.withdrawExternal(address(this), 1e18);
@@ -83,7 +83,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         // Ensure funds have been accredited
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
 
         /*
@@ -116,7 +116,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         // Ensure no funds have been taken
         assertEq(address(this).balance, FUNDS - 1e18); // Earlier deposit is still there
         assertEq(address(paymentProcessor).balance, 1e17);
-        assertEq(paymentProcessor.balanceExternal(), 1e17);
+        assertEq(paymentProcessor._balance(), 1e17);
         assertEq(paymentProcessor.totalAssets(), 1e17);
 
         /*
@@ -136,7 +136,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS - 1e18);
         assertEq(address(paymentProcessor).balance, 1e18);
         assertEq(paymentProcessor.totalAssets(), 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
         assertEq(paymentProcessor.convertToAssets(shares), 1e18);
         assertEq(paymentProcessor.previewMint(shares), 1e18);
         assertEq(paymentProcessor.previewDeposit(1e18), shares);
@@ -156,7 +156,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Ensure shares have been taken
         assertEq(paymentProcessor.balanceOf(address(this)), 0);
@@ -176,7 +176,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS - 1e18);
         assertEq(address(paymentProcessor).balance, 1e18);
         assertEq(paymentProcessor.totalAssets(), 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
 
         // Ensure shares have been accredited
         assertEq(paymentProcessor.balanceOf(address(this)), 1e18);
@@ -194,7 +194,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(address(this).balance, FUNDS);
         assertEq(address(paymentProcessor).balance, 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Ensure shares have been redeemed
         assertEq(paymentProcessor.balanceOf(address(this)), 0);
@@ -224,7 +224,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 0);
         assertEq(paymentContract.balance, 2e18);
         assertEq(paymentProcessor.totalAssets(), 2e18);
-        assertEq(paymentProcessor.balanceExternal(), 2e18);
+        assertEq(paymentProcessor._balance(), 2e18);
 
         // Ensure shares have been accredited
         assertEq(paymentProcessor.balanceOf(us), ourShares);
@@ -243,7 +243,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 0);
         assertEq(paymentContract.balance, 3e18);
         assertEq(paymentProcessor.totalAssets(), 3e18);
-        assertEq(paymentProcessor.balanceExternal(), 3e18);
+        assertEq(paymentProcessor._balance(), 3e18);
 
         // Ensure shares have been accredited
         assertEq(paymentProcessor.balanceOf(us), 2e18);
@@ -262,7 +262,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 0);
         assertEq(paymentContract.balance, 2e18);
         assertEq(paymentProcessor.totalAssets(), 2e18);
-        assertEq(paymentProcessor.balanceExternal(), 2e18);
+        assertEq(paymentProcessor._balance(), 2e18);
 
         // Ensure shares have been taken
         assertEq(paymentProcessor.balanceOf(us), 1e18);
@@ -281,7 +281,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 0);
         assertEq(paymentContract.balance, 3e18);
         assertEq(paymentProcessor.totalAssets(), 3e18);
-        assertEq(paymentProcessor.balanceExternal(), 3e18);
+        assertEq(paymentProcessor._balance(), 3e18);
     
         // Ensure shares have been taken
         assertEq(paymentProcessor.balanceOf(us), 2e18);
@@ -300,7 +300,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 0);
         assertEq(paymentContract.balance, 2e18);
         assertEq(paymentProcessor.totalAssets(), 2e18);
-        assertEq(paymentProcessor.balanceExternal(), 2e18);
+        assertEq(paymentProcessor._balance(), 2e18);
     
         // Ensure shares have been taken
         assertEq(paymentProcessor.balanceOf(us), 1e18);
@@ -321,7 +321,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         // the deposited ether
         assertEq(paymentContract.balance, 3e18);
         assertEq(paymentProcessor.totalAssets(), 3e18);
-        assertEq(paymentProcessor.balanceExternal(), 3e18);
+        assertEq(paymentProcessor._balance(), 3e18);
         assertEq(paymentProcessor.totalSupply(), 2e18);
 
         // Withdraw our shares
@@ -340,7 +340,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 1e18 + 0.5e18);
         assertEq(paymentContract.balance, 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
     }
 
     function testVaultYieldAsymmetricalShares() public {
@@ -373,7 +373,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         // 1000 Eth + (us) 2 Eth + (them) 1 Eth
         assertEq(paymentContract.balance, 1003e18);
         assertEq(paymentProcessor.totalAssets(), 1003e18);
-        assertEq(paymentProcessor.balanceExternal(), 1003e18);
+        assertEq(paymentProcessor._balance(), 1003e18);
 
         // Ensure our total share supply isn't factoring in the external _deposit()
         assertEq(paymentProcessor.totalSupply(), 3e18);
@@ -393,7 +393,7 @@ contract NativeVaultPaymentProcessorTest is Test {
         assertEq(them.balance, 1e18 + third + 1); // They should receive 33%
         assertEq(paymentContract.balance, 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Ensure all shares have been redeemed
         assertEq(paymentProcessor.totalSupply(), 0);

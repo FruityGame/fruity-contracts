@@ -15,7 +15,7 @@ contract ExternalPaymentProcessorTest is Test {
 
     function testDepositExternalPermissions() public {
         paymentProcessor.depositExternal(address(this), 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
 
         // Attempt to deposit externally from an unauthorized account
         vm.expectRevert("UNAUTHORIZED");
@@ -50,7 +50,7 @@ contract ExternalPaymentProcessorTest is Test {
         paymentProcessor.depositExternal(address(this), 1e18);
         paymentProcessor.withdrawExternal(address(this), 1e18);
 
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Attempt to withdraw externally from an unauthorized account
         vm.expectRevert("UNAUTHORIZED");
@@ -59,9 +59,9 @@ contract ExternalPaymentProcessorTest is Test {
     }
 
     function testBalanceExternalPermissions() public {
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         vm.prank(address(0xDEADBEEF));
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
     }
 }

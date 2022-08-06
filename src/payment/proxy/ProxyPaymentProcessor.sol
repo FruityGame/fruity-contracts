@@ -4,7 +4,7 @@ pragma solidity ^0.8;
 import "src/payment/proxy/ExternalPaymentProcessor.sol";
 
 abstract contract ProxyPaymentProcessor is PaymentProcessor {
-    ExternalPaymentProcessor proxyProcessor;
+    ExternalPaymentProcessor internal proxyProcessor;
 
     constructor (ExternalPaymentProcessor _proxyProcessor) {
         proxyProcessor = _proxyProcessor;
@@ -18,7 +18,7 @@ abstract contract ProxyPaymentProcessor is PaymentProcessor {
         proxyProcessor.withdrawExternal(to, paymentWad);
     }
 
-    function _balance() internal view virtual override returns (uint256) {
-        return proxyProcessor.balanceExternal();
+    function _balance() public view virtual override returns (uint256) {
+        return proxyProcessor._balance();
     }
 }

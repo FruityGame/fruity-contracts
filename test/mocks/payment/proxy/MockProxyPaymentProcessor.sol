@@ -18,8 +18,4 @@ contract MockProxyPaymentProcessor is ProxyPaymentProcessor {
     function _withdrawExternal(address to, uint256 paymentWad) external {
         _withdraw(to, paymentWad);
     }
-
-    function _balanceExternal() external view returns (uint256) {
-        return _balance();
-    }
 }

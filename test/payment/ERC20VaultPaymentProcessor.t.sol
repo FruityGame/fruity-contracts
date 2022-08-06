@@ -41,7 +41,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), FUNDS - 1e18);
         assertEq(token.balanceOf(address(paymentProcessor)), 1e18);
         assertEq(paymentProcessor.totalAssets(), 1e18);
-        assertEq(paymentProcessor.balanceExternal(), 1e18);
+        assertEq(paymentProcessor._balance(), 1e18);
 
         checkERC4626Invariants();
     }
@@ -57,7 +57,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         checkERC4626Invariants();
     }
@@ -71,7 +71,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         checkERC4626Invariants();
     }
@@ -88,7 +88,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), 0);
         assertEq(token.balanceOf(address(paymentProcessor)), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         checkERC4626Invariants();
     }
@@ -100,7 +100,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), FUNDS + 1e18);
         assertEq(token.balanceOf(address(paymentProcessor)), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         checkERC4626Invariants();
     }
@@ -120,7 +120,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), 1e17);
         assertEq(paymentProcessor.totalAssets(), 1e17);
-        assertEq(paymentProcessor.balanceExternal(), 1e17);
+        assertEq(paymentProcessor._balance(), 1e17);
 
         checkERC4626Invariants();
     }
@@ -152,7 +152,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         // 1000 Token + (us) 2 Token + (them) 1 Token
         assertEq(token.balanceOf(paymentContract), 1003e18);
         assertEq(paymentProcessor.totalAssets(), 1003e18);
-        assertEq(paymentProcessor.balanceExternal(), 1003e18);
+        assertEq(paymentProcessor._balance(), 1003e18);
 
         // Ensure our total share supply isn't factoring in the external _deposit()
         assertEq(paymentProcessor.totalSupply(), 3e18);
@@ -182,7 +182,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
         assertEq(token.balanceOf(them), 1e18 + third + 1); // They should receive 33%
         assertEq(token.balanceOf(paymentContract), 0);
         assertEq(paymentProcessor.totalAssets(), 0);
-        assertEq(paymentProcessor.balanceExternal(), 0);
+        assertEq(paymentProcessor._balance(), 0);
 
         // Ensure all shares have been redeemed
         assertEq(paymentProcessor.totalSupply(), 0);

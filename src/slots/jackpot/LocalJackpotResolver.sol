@@ -25,7 +25,7 @@ abstract contract LocalJackpotResolver is JackpotResolver {
         emit JackpotChanged(out, jackpotWad);
     }
 
-    function getJackpot() internal view virtual override returns (uint256) {
+    function getJackpot() public view virtual override returns (uint256) {
         return jackpotWad;
     }
 }

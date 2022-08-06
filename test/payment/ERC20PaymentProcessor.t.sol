@@ -24,7 +24,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS - 1e18);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS + 1e18);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS + 1e18);
+        assertEq(paymentProcessor._balance(), FUNDS + 1e18);
     }
 
     function testDepositInvalidAllowance() public {
@@ -37,7 +37,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 
     function testDepositWithMessageValue() public {
@@ -48,7 +48,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 
     function testDepositUserCannotAfford() public {
@@ -62,7 +62,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), 0);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 
     // This prevents an invariant whereby a machine is accepting invalid bets
@@ -74,7 +74,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 
     function testWithdraw() public {
@@ -82,7 +82,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS + 1e18);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS - 1e18);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS - 1e18);
+        assertEq(paymentProcessor._balance(), FUNDS - 1e18);
     }
 
     function testWithdrawCannotAfford() public {
@@ -98,7 +98,7 @@ contract ERC20PaymentProcessorTest is Test {
 
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 
     function testWithdrawZero() public {
@@ -107,6 +107,6 @@ contract ERC20PaymentProcessorTest is Test {
         // Ensure balances haven't changed
         assertEq(token.balanceOf(address(this)), FUNDS);
         assertEq(token.balanceOf(address(paymentProcessor)), FUNDS);
-        assertEq(paymentProcessor.balanceExternal(), FUNDS);
+        assertEq(paymentProcessor._balance(), FUNDS);
     }
 }

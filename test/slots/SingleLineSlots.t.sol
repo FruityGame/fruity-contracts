@@ -3,10 +3,8 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "test/mocks/slots/MockSingleLineSlots.sol";
-import "test/mocks/MockChainlinkVRF.sol";
 
 import "src/libraries/Board.sol";
-//import "src/payment/PaymentProcessor.sol";
 
 contract SlotsTest is Test {
     uint256 constant WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(255))));

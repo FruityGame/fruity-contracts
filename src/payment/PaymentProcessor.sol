@@ -8,5 +8,5 @@ abstract contract PaymentProcessor {
 
     function _deposit(address from, uint256 paymentWad) internal virtual;
     function _withdraw(address to, uint256 paymentWad) internal virtual;
-    function _balance() internal view virtual returns (uint256);
+    function _balance() public view virtual returns (uint256);
 }

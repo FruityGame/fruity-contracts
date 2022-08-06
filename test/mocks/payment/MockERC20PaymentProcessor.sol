@@ -23,8 +23,4 @@ contract MockERC20PaymentProcessor is ERC20PaymentProcessor {
     function withdrawExternal(address to, uint256 paymentWad) external {
         _withdraw(to, paymentWad);
     }
-
-    function balanceExternal() external view returns (uint256) {
-        return _balance();
-    }
 }
