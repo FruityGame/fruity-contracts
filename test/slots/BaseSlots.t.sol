@@ -283,4 +283,22 @@ contract BaseSlotsTest is Test {
         // Ensure the jackpot has been incremented
         assertEq(slots.jackpotWad(), 0.5e18 + expectedJackpot);
     }
+
+    function testFulfillBetZeroWinPayout() public {
+        SlotSession memory session = SlotSession(address(this), 1e18, 0, 0);
+        slots.beginBetExternal(session);
+        
+        // Setup the mock to return 0.5 Eth as the 'result' from the parsed board
+        slots.setProcessSessionResult(0);
+
+        // Expect an event to be emitted to relay information back to the frontend
+        vm.expectEmit(true, false, false, true);
+        emit BetFulfilled(address(this), uint256(0), uint256(0));
+        slots.fulfillRandomnessExternal(1, 0);
+
+        // Ensure we've paid out nothing
+        assertEq(slots.balance(), 1e18);
+        // Ensure the jackpot has been incremented
+        assertEq(slots.jackpotWad(), uint256(1e18) / 3);
+    }
 }

@@ -6,8 +6,6 @@ import "src/payment/PaymentProcessor.sol";
 abstract contract MockPaymentProcessor is PaymentProcessor {
     uint256 public balance = 0;
 
-    constructor() {}
-
     function _deposit(address from, uint256 paymentWad) internal override {
         balance += paymentWad;
     }

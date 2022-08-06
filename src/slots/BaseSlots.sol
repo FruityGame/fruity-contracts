@@ -48,7 +48,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
 
     error InvalidParams(bytes message);
 
-    modifier canAfford(uint256 payoutWad) override {
+    modifier canAfford(uint256 payoutWad) virtual override {
         if (payoutWad > availableAssets()) {
             revert InsufficientFunds(address(this), availableAssets(), payoutWad);
         }
@@ -100,7 +100,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         refund(session);
     }
 
-    function fulfillRandomness(uint256 requestId, uint256 randomness) internal override {
+    function fulfillRandomness(uint256 requestId, uint256 randomness) internal virtual override {
         SlotSession memory session = getSession(requestId);
         SlotParams memory _params = params;
 
@@ -108,10 +108,6 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
 
         uint256 board = Board.generate(randomness, _params);
         uint256 payoutWad = processSession(board, randomness, session, _params);
-
-        if (_params.scatterSymbol <= _params.symbols) {
-            checkScatter(board, _params);
-        }
 
         // End session before payout to prevent reentrancy attacks
         endSession(requestId);

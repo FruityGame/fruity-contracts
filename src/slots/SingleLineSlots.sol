@@ -26,6 +26,10 @@ abstract contract SingleLineSlots is BaseSlots {
     ) internal override returns (uint256 payoutWad) {
         (uint256 symbol, uint256 count) = checkWinline(board, _params);
         payoutWad += resolveSymbol(symbol, count, randomness, session, _params);
+
+        if (_params.scatterSymbol <= _params.symbols) {
+            checkScatter(board, _params);
+        }
     }
 
     function checkWinline(

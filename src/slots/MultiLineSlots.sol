@@ -49,6 +49,10 @@ abstract contract MultiLineSlots is BaseSlots {
 
             payoutWad += resolveSymbol(symbol, count, randomness, session, _params);
         }
+
+        if (_params.scatterSymbol <= _params.symbols) {
+            checkScatter(board, _params);
+        }
     }
 
     function checkWinline(
