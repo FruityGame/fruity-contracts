@@ -21,7 +21,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
     function setUp() public virtual {
         token = new MockERC20(FUNDS);
         paymentProcessor = new MockERC20VaultPaymentProcessor(
-            address(token),
+            token,
             "Mock Vault",
             "MVT"
         );

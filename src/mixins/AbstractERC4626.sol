@@ -147,9 +147,9 @@ abstract contract AbstractERC4626 is ERC20 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual;
 
-    function afterBurn(address owner, address receiver, uint256 shares) internal virtual {}
+    function afterBurn(address owner, address receiver, uint256 shares) internal virtual;
 
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual {}
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual;
 }

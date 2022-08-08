@@ -22,4 +22,10 @@ contract MockNativeVaultPaymentProcessor is NativeVaultPaymentProcessor {
     function withdrawExternal(address to, uint256 paymentWad) external {
         _withdraw(to, paymentWad);
     }
+
+    /*
+        ERC4626 Hooks
+    */
+    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
 }

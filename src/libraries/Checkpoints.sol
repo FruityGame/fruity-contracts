@@ -27,14 +27,20 @@ library Checkpoints {
         uint256 index = history._checkpoints.length;
         if (index == 0) return 0;
 
-        require(history._checkpoints[index - 1]._blockNumber < block.number, "Checkpoints: block not yet mined");
+        require(history._checkpoints[index - 1]._blockNumber < block.number, "Checkpoints: Block not yet mined");
         return history._checkpoints[index - 1]._value;
     }
 
     function getAtBlock(History storage history, uint256 blockNumber) internal view returns (uint256) {
-        require(blockNumber < block.number, "Checkpoints: block not yet mined");
+        require(blockNumber < block.number, "Checkpoints: Block not yet mined");
 
         uint256 high = history._checkpoints.length;
+
+        // Optimistic check
+        if (high != 0 && history._checkpoints[high - 1]._blockNumber <= blockNumber) {
+            return history._checkpoints[high - 1]._value;
+        }
+
         uint256 low = 0;
         uint256 mid = 0;
 

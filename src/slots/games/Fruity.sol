@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 < 0.9.0;
 
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SlotParams, SlotSession, MultiLineSlots } from "src/slots/MultiLineSlots.sol";
 import { LocalJackpotResolver } from "src/slots/jackpot/LocalJackpotResolver.sol";
 import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
@@ -10,7 +11,7 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     mapping(uint256 => SlotSession) private sessions;
 
     constructor(
-        address asset, string memory name, string memory symbol,
+        ERC20 asset, string memory name, string memory symbol,
         ChainlinkConsumer.VRFParams memory vrfParams
     )
         ChainlinkConsumer(vrfParams)
@@ -49,4 +50,10 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     function getInitialParams() private pure returns (SlotParams memory out) {
         out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 500, 1e15);
     }
+
+    /*
+        ERC4626 Hooks
+    */
+    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
 }

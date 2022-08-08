@@ -29,8 +29,8 @@ abstract contract ERC20PaymentProcessor is PaymentProcessor {
         _;
     }
 
-    constructor(address _token) {
-        token = ERC20(_token);
+    constructor(ERC20 _token) {
+        token = _token;
     }
 
     function _deposit(address from, uint256 paymentWad) internal override isZeroMsgValue() userCanAfford(from, paymentWad) {

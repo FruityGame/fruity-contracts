@@ -21,7 +21,7 @@ contract FruityTest is Test {
         vrf = new MockChainlinkVRF();
         token = new MockERC20(100e18);
         fruity = new Fruity(
-            address(token), "FRUITY VAULT", "FRTV",
+            token, "FRUITY VAULT", "FRTV",
             ChainlinkConsumer.VRFParams(address(vrf), address(0), bytes32(0), uint64(0))
         );
 

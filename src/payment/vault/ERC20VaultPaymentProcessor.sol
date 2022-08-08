@@ -6,12 +6,12 @@ import { ERC4626 } from "src/mixins/ERC4626.sol";
 import { ERC20PaymentProcessor } from "src/payment/ERC20PaymentProcessor.sol";
 
 abstract contract ERC20VaultPaymentProcessor is ERC20PaymentProcessor, ERC4626 {
-    constructor(address asset, string memory name, string memory symbol)
+    constructor(ERC20 asset, string memory name, string memory symbol)
         ERC20PaymentProcessor(asset)
-        ERC4626(ERC20(asset), name, symbol)
+        ERC4626(asset, name, symbol)
     {}
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal override canAfford(assets) {}
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual override canAfford(assets) {}
     function totalAssets() public view override returns (uint256) {
         return _balance();
     }

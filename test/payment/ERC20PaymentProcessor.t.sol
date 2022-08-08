@@ -15,7 +15,7 @@ contract ERC20PaymentProcessorTest is Test {
 
     function setUp() public virtual {
         token = new MockERC20(FUNDS * 2);
-        paymentProcessor = new MockERC20PaymentProcessor(address(token));
+        paymentProcessor = new MockERC20PaymentProcessor(token);
 
         token.transfer(address(paymentProcessor), FUNDS);
     }

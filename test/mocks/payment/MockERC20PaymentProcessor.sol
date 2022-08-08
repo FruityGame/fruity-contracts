@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import "src/payment/ERC20PaymentProcessor.sol";
 import "src/payment/PaymentProcessor.sol";
 
@@ -14,7 +15,7 @@ contract MockERC20PaymentProcessor is ERC20PaymentProcessor {
         _;
     }
 
-    constructor(address token) ERC20PaymentProcessor(token) {}
+    constructor(ERC20 token) ERC20PaymentProcessor(token) {}
 
     function depositExternal(address from, uint256 paymentWad) external payable {
         _deposit(from, paymentWad);

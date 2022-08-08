@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 
 contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
@@ -11,7 +12,7 @@ contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
         _;
     }
 
-    constructor(address asset, string memory name, string memory symbol)
+    constructor(ERC20 asset, string memory name, string memory symbol)
         ERC20VaultPaymentProcessor(asset, name, symbol)
     {}
 
@@ -22,4 +23,10 @@ contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
     function withdrawExternal(address to, uint256 paymentWad) external {
         _withdraw(to, paymentWad);
     }
+
+    /*
+        ERC4626 Hooks
+    */
+    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
 }
