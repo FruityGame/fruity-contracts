@@ -14,10 +14,12 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     using FixedPointMathLib for uint256;
 
     struct Proposal {
-        uint8 status;
-        uint120 voteStart; // # of blocks
-        uint128 voteEnd; // # of blocks
-        uint256 deposit;
+        uint128 voteStart; // # of blocks
+        uint120 voteEnd; // # of blocks
+        uint8 executionStatus;
+        uint256 depositTotal; // Total deposit
+        GovernanceParams params; // Params on proposal creation
+        mapping(address => uint256) deposits;
     }
 
     struct Ballot {
@@ -36,26 +38,30 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     struct GovernanceParams {
-        uint64 votingDelay; // # of blocks
-        uint64 votingPeriod; // # of blocks
-        uint128 quorumThreshold; // 1e18-100e18
+        uint32 depositPeriod; // # of blocks
+        uint32 votingPeriod; // # of blocks
+        uint32 yesThreshold; // 1-100
+        uint32 noWithVetoThreshold; // 1-100
+        uint128 quorumThreshold; // 1-100
         uint256 depositRequirement;
     }
 
-    event DepositReceived(address indexed user, uint256 amount);
+    struct GovernanceParamsCheckpoint {
+        uint256 blockNumber;
+        GovernanceParams[] checkpoints;
+    }
+
+    event DepositReceived(address indexed depositor, uint256 indexed proposalId, uint256 amount);
+    event DepositClaimed(address indexed depositor, uint256 indexed proposalId, uint256 amount);
 
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
     bytes32 public constant EXTENDED_BALLOT_TYPEHASH =
         keccak256("ExtendedBallot(uint256 proposalId,uint8 support,string reason,bytes params)");
-    bytes32 internal constant _DELEGATION_TYPEHASH =
-        keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
-    
+
     /*
         Votes related storage
     */
-    Checkpoints.History private _totalCheckpoints;
-    Checkpoints.History private _totalSupplyCheckpoints;
-    Checkpoints.History private _quorumCheckpoints;
+    //Checkpoints.History private _totalSupplyCheckpoints;
     mapping(address => Checkpoints.History) private _sharesCheckpoints;
 
     /*
@@ -67,10 +73,31 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     /*
         Governance related storage
     */
-    GovernanceParams public params;
+    GovernanceParams public _params;
 
     modifier onlyGovernance() virtual {
         require(msg.sender == address(this), "Permission denied");
+        _;
+    }
+
+    modifier isValidProposal(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) virtual {
+        // Ensure the received proposal actually contains something
+        require(
+            targets.length > 0 &&
+            targets.length == values.length &&
+            targets.length == calldatas.length,
+            "Invalid proposal length"
+        );
+        _;
+    }
+
+    modifier isValidDeposit(uint256 deposit) virtual {
+        require(deposit >= 10**decimals, "Invalid deposit");
         _;
     }
 
@@ -92,25 +119,33 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function state(uint256 proposalId) public view virtual override returns (ProposalState) {
-        // Safer to do it this way to prevent the contract locking up
-        // trying to convert an invalid uint8 to an ProposalState enumeration
-        uint8 status = _proposals[proposalId].status;
-        if (status == uint8(ProposalState.Executed) || status == uint8(ProposalState.Cancelled)) {
-            return ProposalState(status);
+        Proposal storage proposal = _proposals[proposalId];
+        bool insufficientDeposit = proposal.depositTotal < proposal.params.depositRequirement;
+
+        uint256 startBlock = proposal.voteStart;
+        require(startBlock != 0, "Invalid Proposal");
+        // If voting not yet started (still in Deposit period) and deposit is insufficient
+        if (block.number < startBlock && insufficientDeposit) {
+            return ProposalState.Deposit;
         }
 
-        uint256 snapshot = proposalSnapshot(proposalId);
-        if (snapshot == 0) revert("Unknown Proposal ID");
-        if (snapshot >= block.number) return ProposalState.Pending;
+        // If Deposit period has ended and we still have an insufficient deposit
+        if (insufficientDeposit) return ProposalState.Expired;
 
-        uint256 deadline = proposalDeadline(proposalId);
-        if (deadline >= block.number) return ProposalState.Active;
-
-        if (_quorumReached(proposalId) && _voteSucceeded(proposalId)) {
-            return ProposalState.Succeeded;
+        // If Proposal has already been executed
+        uint8 executionStatus = proposal.executionStatus;
+        if (executionStatus == uint8(ProposalState.Executed) || executionStatus == uint8(ProposalState.Failed)) {
+            return ProposalState(executionStatus);
         }
 
-        return ProposalState.Failed;
+        // Quorum reached will return false if no votes have been cast yet
+        if (_quorumReached(proposalId)) return _tally(proposalId);
+
+        // If we have a sufficient deposit, but the proposal has not been executed
+        // AND quorum has not been reached before the end of the voting period
+        if (block.number > proposal.voteEnd) return ProposalState.Expired;
+
+        return ProposalState.Voting;
     }
 
     function proposalSnapshot(uint256 proposalId) public view virtual override returns (uint256) {
@@ -122,35 +157,26 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function votingDelay() public view virtual override returns (uint256) {
-        return params.votingDelay;
+        return _params.depositPeriod;
     }
 
     function votingPeriod() public view virtual override returns (uint256) {
-        return params.votingPeriod;
+        return _params.votingPeriod;
     }
 
-    function quorum(uint256 blockNumber) public view virtual override returns (uint256) {
+    function quorum(uint256 proposalId) public view virtual override returns (uint256) {
         // TODO: Enforce via gov params that quorumThreshold > 0 && quorumThreshold <= 100e18
-        return _totalSupplyCheckpoints.getAtBlock(blockNumber).mulDivUp(getQuorumAtBlock(blockNumber), 100e18);
+        return _proposals[proposalId].params.quorumThreshold;
     }
 
     function _quorumReached(uint256 proposalId) internal view virtual returns (bool) {
         Ballot storage votes = _ballots[proposalId];
+        uint256 tally = votes.yes + votes.no + votes.noWithVeto + votes.abstain;
 
-        return votes.yes + votes.abstain >= quorum(proposalSnapshot(proposalId));
-    }
-
-    function getQuorumAtBlock(uint256 blockNumber) internal view virtual returns (uint256) {
-        // If history is empty, fallback to old storage
-        uint256 length = _quorumCheckpoints._checkpoints.length;
-        if (length == 0) return params.quorumThreshold;
-
-        // Optimistic search, check the latest checkpoint
-        Checkpoints.Checkpoint memory latest = _quorumCheckpoints._checkpoints[length - 1];
-        if (latest._blockNumber <= blockNumber) return latest._value;
-
-        // Otherwize, do the binary search
-        return _quorumCheckpoints.getAtBlock(blockNumber);
+        return
+            tally > 0 && // Short circuit
+            tally >= quorum(proposalId)
+        ;
     }
 
     function getVotes(address account, uint256 blockNumber) public view virtual override returns (uint256) {
@@ -170,36 +196,23 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public virtual override returns (uint256 proposalId) {
-        // Ensure the received proposal actually contains something
-        require(
-            targets.length > 0 &&
-            targets.length == values.length &&
-            targets.length == calldatas.length,
-            "Invalid proposal length"
-        );
-
-        // Get deposit requirement (saves multiple SLOADs)
-        uint256 deposit = params.depositRequirement;
-        require(balanceOf[msg.sender] >= deposit, "Not enough Vault Shares to create proposal");
-
-        // Take the proposal deposit from the user
-        balanceOf[msg.sender] -= deposit;
-        balanceOf[address(this)] += deposit;
-
-        // Create the proposal if it doesn't already exist
+    ) public virtual override
+        isValidProposal(targets, values, calldatas, description)
+    returns (uint256 proposalId) {
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
-        Proposal storage proposal = _proposals[proposalId];
-        require(proposal.voteStart == 0, "Proposal already exists");
 
-        _totalSupplyCheckpoints.push(totalSupply);
-
-        uint256 start = block.number + params.votingDelay;
-        uint256 end = start + params.votingPeriod;
-
-        // Default ProposalState is 0, aka Pending
-        proposal.voteStart = uint120(start);
-        proposal.voteEnd = uint128(end);
+        // How do you even format such an abomination of a ternary
+        (uint256 start, uint256 end) = proposalSnapshot(proposalId) == 0 ?
+            _propose(
+                proposalId,
+                _params.depositRequirement
+            )
+            :
+            _propose(
+                proposalId,
+                _proposals[proposalId].params.depositRequirement
+            )
+        ;
 
         emit ProposalCreated(
             proposalId,
@@ -214,6 +227,73 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         );
     }
 
+    function proposeWithDeposit(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        uint256 deposit
+    ) public virtual override returns (uint256 proposalId) {
+        proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        (uint256 start, uint256 end) = _propose(proposalId, deposit);
+
+        emit ProposalCreated(
+            proposalId,
+            msg.sender,
+            targets,
+            values,
+            new string[](targets.length),
+            calldatas,
+            start,
+            end,
+            description
+        );
+    }
+
+    function _propose(
+        uint256 proposalId,
+        uint256 deposit
+    ) internal virtual
+        isValidDeposit(deposit)
+    returns (uint256, uint256) {
+        Proposal storage proposal = _proposals[proposalId];
+        require(proposal.voteStart == 0, "Proposal already exists");
+
+        // Take the deposit from the proposer
+        _transferFrom(msg.sender, address(this), deposit);
+
+        // Fresh proposal, take total supply snapshot
+        //_totalSupplyCheckpoints.push(totalSupply);
+
+        uint256 start = block.number + _params.depositPeriod;
+        uint256 end = start + _params.votingPeriod;
+
+        // Default ProposalState is 0, aka Deposit
+        proposal.depositTotal = deposit;
+        _proposals[proposalId].deposits[msg.sender] = deposit;
+        // Block # should never exceed 2^40 so should be okay to use uint40/48
+        proposal.voteStart = uint40(start);
+        proposal.voteEnd = uint48(end);
+        proposal.params = _params;
+
+        return (start, end);
+    }
+
+    function depositIntoProposal(
+        uint256 proposalId,
+        uint256 deposit
+    ) public virtual override isValidDeposit(deposit) {
+        // State validates the proposalId is a valid proposal
+        require(state(proposalId) == ProposalState.Deposit, "Proposal is not in Deposit stage");
+
+        // Take the deposit
+        _transferFrom(msg.sender, address(this), deposit);
+        _proposals[proposalId].depositTotal += deposit;
+        _proposals[proposalId].deposits[msg.sender] += deposit;
+
+        emit DepositReceived(msg.sender, proposalId, deposit);
+    }
+
     function execute(
         address[] memory targets,
         uint256[] memory values,
@@ -221,28 +301,21 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256 proposalId) {
         proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-
         ProposalState status = state(proposalId);
 
-        // if votes.noWithVeto > 33%
-        // slash
-        require(
-            status == ProposalState.Succeeded || status == ProposalState.Queued,
-            "Could not execute proposal"
-        );
-        _proposals[proposalId].status = uint8(ProposalState.Executed);
+        require(status == ProposalState.Passed, "Could not execute proposal");
+        _proposals[proposalId].executionStatus = uint8(ProposalState.Executed);
 
         emit ProposalExecuted(proposalId);
 
         // Refund Deposit
-        // TODO: Logic for retrieving deposit in case a proposal Fails
         _beforeExecute(proposalId, targets, values, calldatas, descriptionHash);
         _execute(proposalId, targets, values, calldatas, descriptionHash);
         _afterExecute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function _execute(
-        uint256,
+        uint256 proposalId,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -251,8 +324,31 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256 targetsLength = targets.length;
         for (uint256 i = 0; i < targetsLength; ++i) {
             (bool success, ) = targets[i].call{value: values[i]}(calldatas[i]);
-            require(success, "Governor: Execute failed");
+            if (!success) {
+                _proposals[proposalId].executionStatus = uint8(ProposalState.Failed);
+                revert("Governance execution failed");
+            }
         }
+    }
+
+    // Allows people to claim their deposit back in the event that the proposal does not pass/execute
+    function claimDeposit(uint256 proposalId) public virtual {
+        // State checks the validity of the proposalId
+        ProposalState _state = state(proposalId);
+        require(
+            _state == ProposalState.Passed ||
+            _state == ProposalState.Rejected ||
+            _state == ProposalState.Executed ||
+            _state == ProposalState.Failed,
+            "Invalid claim request"
+        );
+
+        Proposal storage proposal = _proposals[proposalId];
+        uint256 depositAmount = proposal.deposits[msg.sender];
+        require(depositAmount != 0, "Invalid claim request");
+
+        delete proposal.deposits[msg.sender];
+        _transferFrom(address(this), msg.sender, depositAmount);
     }
 
     function castVote(uint256 proposalId, uint8 support) public virtual override returns (uint256 balance) {
@@ -298,7 +394,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
 
     function _castVote(uint256 proposalId, uint8 support) internal virtual returns (uint256 weight) {
         Proposal storage proposal = _proposals[proposalId];
-        require(state(proposalId) == ProposalState.Active, "Proposal is not yet active");
+        require(state(proposalId) == ProposalState.Voting, "Proposal is not yet active");
 
         weight = getVotes(msg.sender, proposal.voteStart);
         _recordVote(proposalId, msg.sender, support, weight);
@@ -338,31 +434,33 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         revert("Invalid vote provided");
     }
 
-    function _voteSucceeded(uint256 proposalId) internal view virtual returns (bool) {
+    function _tally(uint256 proposalId) internal view virtual returns (ProposalState) {
+        Proposal storage proposal = _proposals[proposalId];
         Ballot storage votes = _ballots[proposalId];
 
-        return votes.yes > votes.no + votes.noWithVeto;
+        uint256 tallyWithoutAbstain = votes.yes + votes.no + votes.noWithVeto;
+        uint256 tally = tallyWithoutAbstain + votes.abstain;
+        uint256 votesForNo = votes.no + votes.noWithVeto;
+
+        // If noWithVeto makes up <x>% of the vote
+        if (votes.noWithVeto.mulDivUp(100, tally) >= proposal.params.noWithVetoThreshold) {
+            return ProposalState.RejectedWithVeto;
+        }
+
+        // If we have enough yes votes
+        if (votes.yes.mulDivUp(100, tallyWithoutAbstain) >= proposal.params.yesThreshold) {
+            return ProposalState.Passed;
+        }
+
+        return ProposalState.Rejected;
     }
 
-    function _cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal virtual returns (uint256 proposalId) {
-        proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-        ProposalState status = state(proposalId);
+    function _transferFrom(address from, address to, uint256 amount) private {
+        require(balanceOf[from] >= amount, "Not enough Vault Shares to pay deposit");
 
-        require(
-            status != ProposalState.Cancelled &&
-            status != ProposalState.Expired &&
-            status != ProposalState.Executed,
-            "Cannot cancel inactive Proposal"
-        );
-
-        _proposals[proposalId].status = uint8(ProposalState.Cancelled);
-
-        emit ProposalCanceled(proposalId);
+        // Take the proposal deposit from the user
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
     }
 
     /*
@@ -382,9 +480,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal virtual {
-        
-    }
+    ) internal virtual {}
 
     /*
         ERC4626 Hooks

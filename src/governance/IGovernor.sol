@@ -4,16 +4,17 @@ pragma solidity >=0.8.0 < 0.9.0;
 // OpenZeppelin Governor interface without name() as Solmate ERC20 already defines name
 abstract contract IGovernor {
     // The layout of this struct is purposeful:
-    // Pending is Index 0, so the default value when a proposal is initiated in storage (as uint8)
+    // Deposit is Index 0, so the default value when a proposal is initiated in storage (as uint8)
+    // (note) is named differently
     enum ProposalState {
-        Pending,
-        Active,
-        Cancelled,
-        Failed,
-        Succeeded,
-        Queued,
+        Deposit,
+        Voting,
         Expired,
-        Executed
+        Passed,
+        Rejected,
+        RejectedWithVeto,
+        Executed,
+        Failed
     }
 
     event ProposalCreated(
@@ -79,6 +80,16 @@ abstract contract IGovernor {
         bytes[] memory calldatas,
         string memory description
     ) public virtual returns (uint256 proposalId);
+
+    function proposeWithDeposit(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        uint256 deposit
+    ) public virtual returns (uint256 proposalId);
+
+    function depositIntoProposal(uint256 proposalId, uint256 deposit) public virtual;
 
     function execute(
         address[] memory targets,
