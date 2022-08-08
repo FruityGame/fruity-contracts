@@ -42,7 +42,7 @@ abstract contract ERC4626 is ERC20, AbstractERC4626 {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        afterDeposit(assets, shares);
+        afterDeposit(receiver, assets, shares);
     }
 
     function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
@@ -55,7 +55,7 @@ abstract contract ERC4626 is ERC20, AbstractERC4626 {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        afterDeposit(assets, shares);
+        afterDeposit(receiver, assets, shares);
     }
 
     /*//////////////////////////////////////////////////////////////

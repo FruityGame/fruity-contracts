@@ -51,6 +51,8 @@ abstract contract AbstractERC4626 is ERC20 {
 
         _burn(owner, shares);
 
+        afterBurn(owner, receiver, shares);
+
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         _transfer(receiver, assets);
@@ -73,6 +75,8 @@ abstract contract AbstractERC4626 is ERC20 {
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
+
+        afterBurn(owner, receiver, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -145,5 +149,7 @@ abstract contract AbstractERC4626 is ERC20 {
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
 
-    function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
+    function afterBurn(address owner, address receiver, uint256 shares) internal virtual {}
+
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual {}
 }

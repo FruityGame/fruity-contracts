@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0 < 0.9.0;
 
 import { SafeCastLib } from "solmate/utils/SafeCastLib.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
 import { IGovernor } from "src/governance/IGovernor.sol";
 import { Checkpoints } from "src/libraries/Checkpoints.sol";
@@ -10,6 +11,7 @@ import { AbstractERC4626 } from "src/mixins/AbstractERC4626.sol";
 // TODO: Require in constructor that the ERC20 (totalSupply * decimals) <= type(uint128).max
 abstract contract Governance is IGovernor, AbstractERC4626 {
     using Checkpoints for Checkpoints.History;
+    using FixedPointMathLib for uint256;
 
     struct Proposal {
         uint8 status;
@@ -18,11 +20,11 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256 deposit;
     }
 
-    struct Votes {
-        uint128 no;
-        uint128 yes;
-        uint128 abstain;
-        uint128 noWithVeto;
+    struct Ballot {
+        uint256 no;
+        uint256 yes;
+        uint256 abstain;
+        uint256 noWithVeto;
         mapping(address => bool) hasVoted;
     }
 
@@ -36,9 +38,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     struct GovernanceParams {
         uint64 votingDelay; // # of blocks
         uint64 votingPeriod; // # of blocks
-        uint128 quorumThreshold;
-        uint128 depositRequirement;
-        uint128 slashPercentage;
+        uint128 quorumThreshold; // 1e18-100e18
+        uint256 depositRequirement;
     }
 
     event DepositReceived(address indexed user, uint256 amount);
@@ -52,22 +53,20 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     /*
         Votes related storage
     */
-    mapping(address => address) private _delegation;
-    mapping(address => Checkpoints.History) private _delegateCheckpoints;
     Checkpoints.History private _totalCheckpoints;
+    Checkpoints.History private _totalSupplyCheckpoints;
+    Checkpoints.History private _quorumCheckpoints;
+    mapping(address => Checkpoints.History) private _sharesCheckpoints;
 
     /*
         Proposal related storage
     */
     mapping(uint256 => Proposal) public _proposals;
-    mapping(uint256 => Votes) public _proposalVotes;
+    mapping(uint256 => Ballot) public _ballots;
 
     /*
         Governance related storage
     */
-
-    Checkpoints.History private _totalSupplyCheckpoints;
-    Checkpoints.History private _quorumCheckpoints;
     GovernanceParams public params;
 
     modifier onlyGovernance() virtual {
@@ -92,11 +91,12 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         return uint256(keccak256(abi.encode(targets, values, calldatas, descriptionHash)));
     }
 
-    function state(uint256 proposalId) public view virtual override returns (ProposalState state) {
-        state = ProposalState(_proposals[proposalId].status);
-
-        if (state == ProposalState.Executed || state == ProposalState.Cancelled) {
-            return state;
+    function state(uint256 proposalId) public view virtual override returns (ProposalState) {
+        // Safer to do it this way to prevent the contract locking up
+        // trying to convert an invalid uint8 to an ProposalState enumeration
+        uint8 status = _proposals[proposalId].status;
+        if (status == uint8(ProposalState.Executed) || status == uint8(ProposalState.Cancelled)) {
+            return ProposalState(status);
         }
 
         uint256 snapshot = proposalSnapshot(proposalId);
@@ -129,20 +129,15 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         return params.votingPeriod;
     }
 
-    // In stock OZ contract, is the minimum # of votes to create a proposal.
-    // Here, it's the # of shares to deposit to create a proposal.
-    function proposalThreshold() public view virtual returns (uint256) {
-        return params.depositRequirement;
-    }
-
     function quorum(uint256 blockNumber) public view virtual override returns (uint256) {
-        return (_totalSupplyCheckpoints.getAtBlock(blockNumber) * getQuorumAtBlock(blockNumber)) / 100;
+        // TODO: Enforce via gov params that quorumThreshold > 0 && quorumThreshold <= 100e18
+        return _totalSupplyCheckpoints.getAtBlock(blockNumber).mulDivUp(getQuorumAtBlock(blockNumber), 100e18);
     }
 
     function _quorumReached(uint256 proposalId) internal view virtual returns (bool) {
-        Votes storage votes = _proposalVotes[proposalId];
+        Ballot storage votes = _ballots[proposalId];
 
-        return quorum(proposalSnapshot(proposalId)) <= votes.yes + votes.abstain;
+        return votes.yes + votes.abstain >= quorum(proposalSnapshot(proposalId));
     }
 
     function getQuorumAtBlock(uint256 blockNumber) internal view virtual returns (uint256) {
@@ -159,7 +154,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function getVotes(address account, uint256 blockNumber) public view virtual override returns (uint256) {
-        return _delegateCheckpoints[account].getAtBlock(blockNumber);
+        return _sharesCheckpoints[account].getAtBlock(blockNumber);
     }
 
     function getVotesWithParams(
@@ -228,6 +223,9 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
         ProposalState status = state(proposalId);
+
+        // if votes.noWithVeto > 33%
+        // slash
         require(
             status == ProposalState.Succeeded || status == ProposalState.Queued,
             "Could not execute proposal"
@@ -236,6 +234,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
 
         emit ProposalExecuted(proposalId);
 
+        // Refund Deposit
+        // TODO: Logic for retrieving deposit in case a proposal Fails
         _beforeExecute(proposalId, targets, values, calldatas, descriptionHash);
         _execute(proposalId, targets, values, calldatas, descriptionHash);
         _afterExecute(proposalId, targets, values, calldatas, descriptionHash);
@@ -310,28 +310,28 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint8 support,
         uint256 weight
     ) internal virtual {
-        Votes storage votes = _proposalVotes[proposalId];
+        Ballot storage votes = _ballots[proposalId];
         require(!votes.hasVoted[account], "Account has already voted");
 
         votes.hasVoted[account] = true;
 
         if (support == uint8(VoteType.Yes)) {
-            votes.yes += SafeCastLib.safeCastTo128(weight);
+            votes.yes += weight;
             return;
         }
 
         if (support == uint8(VoteType.No)) {
-            votes.no += SafeCastLib.safeCastTo128(weight);
+            votes.no += weight;
             return;
         }
 
         if (support == uint8(VoteType.Abstain)) {
-            votes.abstain += SafeCastLib.safeCastTo128(weight);
+            votes.abstain += weight;
             return;
         }
 
         if (support == uint8(VoteType.NoWithVeto)) {
-            votes.noWithVeto += SafeCastLib.safeCastTo128(weight);
+            votes.noWithVeto += weight;
             return;
         }
 
@@ -339,9 +339,9 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function _voteSucceeded(uint256 proposalId) internal view virtual returns (bool) {
-        Votes storage votes = _proposalVotes[proposalId];
+        Ballot storage votes = _ballots[proposalId];
 
-        return votes.yes > votes.no;
+        return votes.yes > votes.no + votes.noWithVeto;
     }
 
     function _cancel(
@@ -382,5 +382,27 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal virtual {}
+    ) internal virtual {
+        
+    }
+
+    /*
+        ERC4626 Hooks
+    */
+    function afterBurn(address owner, address receiver, uint256 shares) internal virtual override {
+        _sharesCheckpoints[owner].push(balanceOf[owner]);
+        _sharesCheckpoints[receiver].push(balanceOf[receiver] + shares);
+    }
+
+    function afterDeposit(address receiver, uint256 assets, uint256 shares) internal virtual override {
+        _sharesCheckpoints[receiver].push(balanceOf[receiver]);
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a - b;
+    }
 }
