@@ -3,7 +3,7 @@ pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
 import "src/libraries/Board.sol";
-import { SlotParams } from "src/slots/BaseSlots.sol";
+import { SlotParams } from "src/games/slots/BaseSlots.sol";
 
 contract BoardTest is Test {
     uint256 constant internal MAX_INT = 2**256 - 1;

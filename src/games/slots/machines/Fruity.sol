@@ -2,8 +2,8 @@
 pragma solidity >=0.8.0 < 0.9.0;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { SlotParams, SlotSession, MultiLineSlots } from "src/slots/MultiLineSlots.sol";
-import { LocalJackpotResolver } from "src/slots/jackpot/LocalJackpotResolver.sol";
+import { SlotParams, SlotSession, MultiLineSlots } from "src/games/slots/MultiLineSlots.sol";
+import { LocalJackpotResolver } from "src/games/slots/jackpot/LocalJackpotResolver.sol";
 import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 

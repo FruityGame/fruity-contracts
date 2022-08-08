@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "test/mocks/slots/MockSingleLineSlots.sol";
+import "test/mocks/games/slots/MockSingleLineSlots.sol";
 
 import { Board } from "src/libraries/Board.sol";
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "src/slots/games/Fruity.sol";
+import "src/games/slots/machines/Fruity.sol";
 
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockERC20.sol";

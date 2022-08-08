@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "test/mocks/slots/jackpot/MockLocalJackpotResolver.sol";
-import "src/slots/BaseSlots.sol";
+import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
+import "src/games/slots/BaseSlots.sol";
 
 contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
     uint256 public processSessionResult = 0;

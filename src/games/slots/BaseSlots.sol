@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import { Board } from "src/libraries/Board.sol";
 import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
-import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
+import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 
 // Largest symbol that can be parsed from each 4 bit section of the board
 uint256 constant MAX_SYMBOL = 15;

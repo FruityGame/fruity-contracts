@@ -1,5 +1,5 @@
 TN:
-SF:test/mocks/slots/MockSingleLineSlots.sol
+SF:test/mocks/games/slots/MockSingleLineSlots.sol
 FN:19,MockMuliLineSlots.getSession
 FNDA:0,MockMuliLineSlots.getSession
 DA:21,0
@@ -96,7 +96,7 @@ BRF:0
 BRH:0
 end_of_record
 TN:
-SF:test/mocks/slots/MockBaseSlots.sol
+SF:test/mocks/games/slots/MockBaseSlots.sol
 FN:23,MockBaseSlots.processSession
 FNDA:3,MockBaseSlots.processSession
 DA:29,3
@@ -252,7 +252,7 @@ BRF:4
 BRH:0
 end_of_record
 TN:
-SF:test/mocks/slots/MockMuliLineSlots.sol
+SF:test/mocks/games/slots/MockMuliLineSlots.sol
 FN:20,MockMuliLineSlots.getSession
 FNDA:3,MockMuliLineSlots.getSession
 DA:22,3

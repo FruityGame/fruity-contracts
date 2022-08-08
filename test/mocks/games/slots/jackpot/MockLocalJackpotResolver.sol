@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/slots/jackpot/LocalJackpotResolver.sol";
+import "src/games/slots/jackpot/LocalJackpotResolver.sol";
 
 contract MockLocalJackpotResolver is LocalJackpotResolver {
     function setJackpot(uint256 _jackpotWad) external {

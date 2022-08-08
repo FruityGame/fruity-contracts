@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import { Auth } from "solmate/auth/Auth.sol";
-import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
+import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 
 abstract contract ExternalJackpotResolver is JackpotResolver, Auth {
     uint256 max;

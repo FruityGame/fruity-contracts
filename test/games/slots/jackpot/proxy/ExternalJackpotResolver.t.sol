@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "test/mocks/slots/jackpot/proxy/MockExternalJackpotResolver.sol";
+import "test/mocks/games/slots/jackpot/proxy/MockExternalJackpotResolver.sol";
 
 contract ExternalJackpotResolverTest is Test {
     MockExternalJackpotResolver jackpotResolver;

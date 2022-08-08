@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0 < 0.9.0;
 
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
-import { SlotParams } from "src/slots/BaseSlots.sol";
+import { SlotParams } from "src/games/slots/BaseSlots.sol";
 
 library Board {
     uint256 constant WAD = 1e18;

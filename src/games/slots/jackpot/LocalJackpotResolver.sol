@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
+import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 
 abstract contract LocalJackpotResolver is JackpotResolver {
     uint256 public jackpotWad;

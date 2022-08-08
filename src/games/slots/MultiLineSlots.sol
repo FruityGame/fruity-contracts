@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import { SlotParams, SlotSession, BaseSlots } from "src/slots/BaseSlots.sol";
+import { SlotParams, SlotSession, BaseSlots } from "src/games/slots/BaseSlots.sol";
 
 import { Winline } from "src/libraries/Winline.sol";
 import { Bloom } from "src/libraries/Bloom.sol";

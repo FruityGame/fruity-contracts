@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import "forge-std/Test.sol";
-import "test/mocks/slots/MockMuliLineSlots.sol";
+import "test/mocks/games/slots/MockMuliLineSlots.sol";
 
 import { Board } from "src/libraries/Board.sol";
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
