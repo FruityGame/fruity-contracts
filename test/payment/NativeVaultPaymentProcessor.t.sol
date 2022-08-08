@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "test/mocks/payment/MockNativeVaultPaymentProcessor.sol";
 import "test/mocks/payment/reentrancy/MockNativeVaultReentrancy.sol";
 
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
+
 contract NativeVaultPaymentProcessorTest is Test {
     uint256 constant FUNDS = 100 * 1e18;
 

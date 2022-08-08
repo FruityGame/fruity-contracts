@@ -4,7 +4,7 @@ pragma solidity ^0.8;
 import "forge-std/Test.sol";
 import "test/mocks/slots/MockBaseSlots.sol";
 
-import "src/libraries/Board.sol";
+import { Board } from "src/libraries/Board.sol";
 
 contract BaseSlotsTest is Test {
     // 01|01|01|01|01

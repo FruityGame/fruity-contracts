@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "test/mocks/MockERC20.sol";
 import "test/mocks/payment/MockERC20VaultPaymentProcessor.sol";
 
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
+
 // Underlying ERC4626 impl is tested in the Solmate repo, therefore less
 // tests here are done under the assumption that their unit tests are sufficient
 contract ERC20VaultPaymentProcessorTest is Test {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "src/payment/PaymentProcessor.sol";
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
 
 abstract contract NativePaymentProcessor is PaymentProcessor {
     error PaymentError(address user, uint256 payoutWad);

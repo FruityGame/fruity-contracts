@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/slots/jackpot/JackpotResolver.sol";
-import "src/slots/jackpot/proxy/ExternalJackpotResolver.sol";
+import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
+import { ExternalJackpotResolver } from "src/slots/jackpot/proxy/ExternalJackpotResolver.sol";
 
 abstract contract ProxyJackpotResolver is JackpotResolver {
     ExternalJackpotResolver internal proxyResolver;

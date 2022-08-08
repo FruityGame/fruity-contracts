@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "src/slots/MultiLineSlots.sol";
-import "src/slots/jackpot/LocalJackpotResolver.sol";
-import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
-import "src/randomness/consumer/Chainlink.sol";
+import { SlotParams, SlotSession, MultiLineSlots } from "src/slots/MultiLineSlots.sol";
+import { LocalJackpotResolver } from "src/slots/jackpot/LocalJackpotResolver.sol";
+import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 
 contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProcessor, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
     constructor(
         address asset, string memory name, string memory symbol,
-        VRFParams memory vrfParams
+        ChainlinkConsumer.VRFParams memory vrfParams
     )
         ChainlinkConsumer(vrfParams)
         ERC20VaultPaymentProcessor(asset, name, symbol)

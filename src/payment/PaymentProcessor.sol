@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
 abstract contract PaymentProcessor {
     error InsufficientFunds(address account, uint256 balance, uint256 wanted);

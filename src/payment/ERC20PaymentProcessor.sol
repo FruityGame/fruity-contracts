@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "solmate/tokens/ERC20.sol";
-import "src/payment/PaymentProcessor.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
 
 abstract contract ERC20PaymentProcessor is PaymentProcessor {
     ERC20 public token;

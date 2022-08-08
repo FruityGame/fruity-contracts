@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "solmate/utils/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 import { SlotParams } from "src/slots/BaseSlots.sol";
 
-uint256 constant WAD = 1e18;
-uint256 constant MASK_4 = (0x1 << 4) - 1;
-
 library Board {
+    uint256 constant WAD = 1e18;
+    uint256 constant MASK_4 = (0x1 << 4) - 1;
+
     modifier symbolsWithinBounds(SlotParams memory params) {
         require(params.symbols > 0 && params.symbols <= 15, "Invalid number of symbols provided");
         _;

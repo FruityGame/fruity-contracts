@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0;
 
-import "src/libraries/Board.sol";
-import "src/randomness/RandomnessBeacon.sol";
-import "src/payment/PaymentProcessor.sol";
-import "src/slots/jackpot/JackpotResolver.sol";
+import { Board } from "src/libraries/Board.sol";
+import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
+import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
+
+// Largest symbol that can be parsed from each 4 bit section of the board
+uint256 constant MAX_SYMBOL = 15;
+// Default Jackpot is a 1/1024 chance if the largest symbol is hit
+uint256 constant JACKPOT_WIN = (1 << 5) - 1;
 
 // Solidity storage unfortunately doesn't pack nested
 // structs, so all params have to go in the base contract
@@ -29,11 +34,6 @@ struct SlotSession {
     uint256 winlines;
     uint256 winlineCount;
 }
-
-// Largest symbol that can be parsed from each 4 bit section of the board
-uint256 constant MAX_SYMBOL = 15;
-// Default Jackpot is a 1/1024 chance if the largest symbol is hit
-uint256 constant JACKPOT_WIN = (1 << 5) - 1;
 
 // Base contract for other Slots contracts to derive from with core logic
 abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/slots/BaseSlots.sol";
+import { SlotParams, SlotSession, BaseSlots } from "src/slots/BaseSlots.sol";
+import { Board } from "src/libraries/Board.sol";
 
 // Optimised for single paylines only
 abstract contract SingleLineSlots is BaseSlots {

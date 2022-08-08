@@ -1,18 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
-import "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import { LinkTokenInterface } from "chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
+import { VRFCoordinatorV2Interface } from "chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import { VRFConsumerBaseV2 } from "chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-import "src/randomness/RandomnessBeacon.sol";
-
-struct VRFParams {
-    address coordinator;
-    address link;
-    bytes32 keyHash;
-    uint64 subscriptionId;
-}
+import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
 
 abstract contract ChainlinkConsumer is RandomnessBeacon, VRFConsumerBaseV2 {
     VRFCoordinatorV2Interface private immutable coordinator;
@@ -20,6 +13,13 @@ abstract contract ChainlinkConsumer is RandomnessBeacon, VRFConsumerBaseV2 {
 
     bytes32 private immutable keyHash;
     uint64 private immutable subscriptionId;
+
+    struct VRFParams {
+        address coordinator;
+        address link;
+        bytes32 keyHash;
+        uint64 subscriptionId;
+    }
 
     constructor(
         VRFParams memory params

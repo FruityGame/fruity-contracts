@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/slots/BaseSlots.sol";
+import { SlotParams, SlotSession, BaseSlots } from "src/slots/BaseSlots.sol";
 
-import "src/libraries/Winline.sol";
-import "src/libraries/Bloom.sol";
-import "src/libraries/Board.sol";
+import { Winline } from "src/libraries/Winline.sol";
+import { Bloom } from "src/libraries/Bloom.sol";
+import { Board } from "src/libraries/Board.sol";
 
 // A winline based contract that matches from left to right
 abstract contract MultiLineSlots is BaseSlots {
@@ -14,9 +14,10 @@ abstract contract MultiLineSlots is BaseSlots {
     error InvalidWinlineCount(uint256 count);
 
     constructor(SlotParams memory slotParams, uint256[] memory winlines) BaseSlots(slotParams) {
-        if (winlines.length == 0) revert InvalidParams("Contract must be instantiated with at least 1 winline");
+        uint256 length = winlines.length;
+        if (length == 0) revert InvalidParams("Contract must be instantiated with at least 1 winline");
 
-        for (uint256 i = 0; i < winlines.length; ++i) {
+        for (uint256 i = 0; i < length; ++i) {
             validWinlines[bytes32(winlines[i])] = true;
         }
     }

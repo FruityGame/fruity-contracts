@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "solmate/auth/Auth.sol";
-import "src/slots/jackpot/JackpotResolver.sol";
+import { Auth } from "solmate/auth/Auth.sol";
+import { JackpotResolver } from "src/slots/jackpot/JackpotResolver.sol";
 
 abstract contract ExternalJackpotResolver is JackpotResolver, Auth {
     uint256 max;

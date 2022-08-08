@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import "src/payment/proxy/ExternalPaymentProcessor.sol";
+import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
 
 abstract contract ProxyPaymentProcessor is PaymentProcessor {
     ExternalPaymentProcessor internal proxyProcessor;
