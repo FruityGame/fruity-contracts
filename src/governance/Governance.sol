@@ -56,7 +56,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     /*
         Votes related storage
     */
-    mapping(address => Checkpoints.History) private sharesCheckpoints;
+    mapping(address => Checkpoints.History) internal sharesCheckpoints;
+    Checkpoints.History internal totalSupplyCheckpoints;
 
     /*
         Proposal related storage
@@ -67,7 +68,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     /*
         Governance related storage
     */
-    uint256 minProposalDeposit;
+    uint256 public minProposalDeposit;
     Params public params;
 
     modifier onlyGovernance() virtual {
@@ -150,11 +151,15 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
 
     function _quorumReached(uint256 proposalId) internal view virtual returns (bool) {
         Ballot storage votes = ballots[proposalId];
+        Proposal storage proposal = proposals[proposalId];
+
         uint256 tally = votes.yes + votes.no + votes.noWithVeto + votes.abstain;
+        uint256 historicalSupply = totalSupplyCheckpoints.getAtBlock(proposal.voteStart);
 
         return
-            tally > 0 && // Short circuit
-            tally >= quorum(proposalId)
+            tally > 0 &&
+            historicalSupply > 0 &&
+            tally.mulDivUp(100, historicalSupply) > quorum(proposalId)
         ;
     }
 
@@ -255,7 +260,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         _transferFrom(msg.sender, address(this), deposit);
 
         // Fresh proposal, take total supply snapshot
-        //_totalSupplyCheckpoints.push(totalSupply);
+        totalSupplyCheckpoints.push(totalSupply);
 
         uint256 start = block.number + params.depositPeriod;
         uint256 end = start + params.votingPeriod;
@@ -267,6 +272,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         proposal.voteStart = uint40(start);
         proposal.voteEnd = uint48(end);
         proposal.params = params;
+
+        emit DepositReceived(msg.sender, proposalId, deposit);
 
         return (start, end);
     }
@@ -296,12 +303,12 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         ProposalState status = state(proposalId);
 
+        // Set before calling contracts to prevent reentrancy
         require(status == ProposalState.Passed, "Could not execute proposal");
         proposals[proposalId].executionStatus = uint8(ProposalState.Executed);
 
         emit ProposalExecuted(proposalId);
 
-        // Refund Deposit
         _beforeExecute(proposalId, targets, values, calldatas, descriptionHash);
         _execute(proposalId, targets, values, calldatas, descriptionHash);
         _afterExecute(proposalId, targets, values, calldatas, descriptionHash);
@@ -342,6 +349,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
 
         delete proposal.deposits[msg.sender];
         _transferFrom(address(this), msg.sender, depositAmount);
+
+        emit DepositClaimed(msg.sender, proposalId, depositAmount);
     }
 
     function hasVoted(uint256 proposalId, address account) public view virtual override returns (bool) {
@@ -404,8 +413,11 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256 weight
     ) internal virtual {
         Ballot storage votes = ballots[proposalId];
-        require(!votes.hasVoted[account], "Account has already voted");
+        // The Cool way of doing it
+        //require(votes.hasVoted[account] = !votes.hasVoted[account], "Account has already voted");
 
+        // The "safer" (citation needed) and more obvious way
+        require(!votes.hasVoted[account], "Account has already voted");
         votes.hasVoted[account] = true;
 
         if (support == uint8(VoteType.Yes)) {
@@ -440,12 +452,12 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256 votesForNo = votes.no + votes.noWithVeto;
 
         // If noWithVeto makes up <x>% of the vote
-        if (votes.noWithVeto.mulDivUp(100, tally) >= proposal.params.noWithVetoThreshold) {
+        if (votes.noWithVeto.mulDivUp(100, tally) > proposal.params.noWithVetoThreshold) {
             return ProposalState.RejectedWithVeto;
         }
 
         // If we have enough yes votes
-        if (votes.yes.mulDivUp(100, tallyWithoutAbstain) >= proposal.params.yesThreshold) {
+        if (votes.yes.mulDivUp(100, tallyWithoutAbstain) > proposal.params.yesThreshold) {
             return ProposalState.Passed;
         }
 

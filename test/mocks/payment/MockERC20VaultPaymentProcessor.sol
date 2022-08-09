@@ -27,6 +27,6 @@ contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
     /*
         ERC4626 Hooks
     */
-    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
+    function afterBurn(address owner, address receiver, uint256 shares) internal virtual override {}
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual override {}
 }
