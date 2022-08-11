@@ -11,8 +11,8 @@ contract MockNativeVaultPaymentProcessor is NativeVaultPaymentProcessor {
         _;
     }
 
-    constructor(string memory name, string memory symbol)
-        NativeVaultPaymentProcessor(name, symbol)
+    constructor(VaultParams memory params)
+        NativeVaultPaymentProcessor(params)
     {}
 
     function depositExternal(address from, uint256 paymentWad) external payable {

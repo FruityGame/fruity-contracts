@@ -12,9 +12,10 @@ contract MockMuliLineSlots is MultiLineSlots, MockLocalJackpotResolver, MockPaym
 
     constructor(
         SlotParams memory slotParams,
-        uint256[] memory winlines
+        uint256[] memory winlines,
+        address owner
     )
-        MultiLineSlots(slotParams, winlines)
+        MultiLineSlots(slotParams, winlines, owner)
     {}
 
     function getSession(uint256 betId) internal view override

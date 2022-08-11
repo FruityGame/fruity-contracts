@@ -11,9 +11,10 @@ contract MockSingleLineSlots is SingleLineSlots, MockLocalJackpotResolver, MockP
     mapping(uint256 => SlotSession) public sessions;
 
     constructor(
-        SlotParams memory slotParams
+        SlotParams memory slotParams,
+        address owner
     )
-        SingleLineSlots(slotParams)
+        SingleLineSlots(slotParams, owner)
     {}
 
     function getSession(uint256 betId) internal view override

@@ -17,7 +17,7 @@ contract NativeVaultPaymentProcessorTest is Test {
 
     function setUp() public virtual {
         paymentProcessor = new MockNativeVaultPaymentProcessor(
-            "Mock Vault", "MVT"
+            NativeVaultPaymentProcessor.VaultParams("Mock Vault", "MVT")
         );
 
         deal(address(this), FUNDS);

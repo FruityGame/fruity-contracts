@@ -12,9 +12,10 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
     bool public endSessionCalled = false;
 
     constructor(
-        SlotParams memory slotParams
+        SlotParams memory slotParams,
+        address owner
     )
-        BaseSlots(slotParams)
+        BaseSlots(slotParams, owner)
     {}
 
     /*

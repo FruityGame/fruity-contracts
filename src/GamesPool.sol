@@ -13,10 +13,10 @@ contract GamesPool is Governance, ERC20VaultPaymentProcessor, ExternalPaymentPro
     constructor(
         uint256 minProposalDeposit,
         Governance.Params memory governanceParams,
-        ERC20 asset, string memory name, string memory symbol
+        ERC20VaultPaymentProcessor.VaultParams memory vaultParams
     )
         Governance(minProposalDeposit, governanceParams)
-        ERC20VaultPaymentProcessor(asset, name, symbol)
+        ERC20VaultPaymentProcessor(vaultParams)
         RolesAuthority(msg.sender, this)
     {}
 }

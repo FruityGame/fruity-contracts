@@ -5,7 +5,11 @@ import { ERC4626Native } from "src/mixins/ERC4626Native.sol";
 import { NativePaymentProcessor } from "src/payment/NativePaymentProcessor.sol";
 
 abstract contract NativeVaultPaymentProcessor is NativePaymentProcessor, ERC4626Native {
-    constructor(string memory name, string memory symbol) ERC4626Native(name, symbol) {}
+    struct VaultParams {
+        string name;
+        string symbol;
+    }
+    constructor(VaultParams memory params) ERC4626Native(params.name, params.symbol) {}
 
     function beforeWithdraw(uint256 assets, uint256 shares) internal virtual override canAfford(assets) {}
     function totalAssets() public view override returns (uint256) {

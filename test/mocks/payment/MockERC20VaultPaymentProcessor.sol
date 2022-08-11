@@ -12,8 +12,8 @@ contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
         _;
     }
 
-    constructor(ERC20 asset, string memory name, string memory symbol)
-        ERC20VaultPaymentProcessor(asset, name, symbol)
+    constructor(VaultParams memory params)
+        ERC20VaultPaymentProcessor(params)
     {}
 
     function depositExternal(address from, uint256 paymentWad) external payable {

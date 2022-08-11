@@ -4,6 +4,7 @@ pragma solidity ^0.8;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Governance } from "src/governance/Governance.sol";
 import { Checkpoints } from "src/libraries/Checkpoints.sol";
+import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 import { MockERC20VaultPaymentProcessor } from "test/mocks/payment/MockERC20VaultPaymentProcessor.sol";
 
 contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
@@ -17,7 +18,7 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
         ERC20 asset, string memory name, string memory symbol
     )
         Governance(minProposalDeposit, governanceParams)
-        MockERC20VaultPaymentProcessor(asset, name, symbol)
+        MockERC20VaultPaymentProcessor(ERC20VaultPaymentProcessor.VaultParams(asset, name, symbol))
     {}
 
     function afterBurn(address owner, address receiver, uint256 shares) internal override(Governance, MockERC20VaultPaymentProcessor) {

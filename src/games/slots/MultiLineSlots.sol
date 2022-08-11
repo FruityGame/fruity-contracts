@@ -13,7 +13,7 @@ abstract contract MultiLineSlots is BaseSlots {
     
     error InvalidWinlineCount(uint256 count);
 
-    constructor(SlotParams memory slotParams, uint256[] memory winlines) BaseSlots(slotParams) {
+    constructor(SlotParams memory slotParams, uint256[] memory winlines, address owner) BaseSlots(slotParams, owner) {
         uint256 length = winlines.length;
         if (length == 0) revert InvalidParams("Contract must be instantiated with at least 1 winline");
 

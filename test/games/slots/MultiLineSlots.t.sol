@@ -29,7 +29,8 @@ contract SlotsTest is Test {
     function setUp() public virtual {
         slots = new MockMuliLineSlots(
             SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            mockWinlines()
+            mockWinlines(),
+            address(this)
         );
     }
 
@@ -91,7 +92,8 @@ contract SlotsTest is Test {
         // Configure slots to have no wildcard set (set wildcard to 255)
         MockMuliLineSlots slotsNoWildcard = new MockMuliLineSlots(
             SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            mockWinlines()
+            mockWinlines(),
+            address(this)
         );
 
         //                                                                4    3    2    1    0

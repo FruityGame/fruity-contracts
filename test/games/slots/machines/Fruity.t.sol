@@ -4,6 +4,7 @@ pragma solidity ^0.8;
 import "forge-std/Test.sol";
 import "src/games/slots/machines/Fruity.sol";
 
+import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockERC20.sol";
 
@@ -21,8 +22,9 @@ contract FruityTest is Test {
         vrf = new MockChainlinkVRF();
         token = new MockERC20(100e18);
         fruity = new Fruity(
-            token, "FRUITY VAULT", "FRTV",
-            ChainlinkConsumer.VRFParams(address(vrf), address(0), bytes32(0), uint64(0))
+            ERC20VaultPaymentProcessor.VaultParams(token, "Fruity Shares", "vFRTY"),
+            ChainlinkConsumer.VRFParams(address(vrf), address(0), bytes32(0), uint64(0)),
+            address(this)
         );
 
         token.approve(address(fruity), 10e18);

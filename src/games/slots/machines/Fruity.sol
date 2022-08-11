@@ -10,13 +10,31 @@ import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProcessor, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
+    modifier sanitizeParams(SlotParams memory _params) override {
+        // Constants
+        require(_params.rows == 3, "Invalid Param: rows");
+        require(_params.reels == 5, "Invalid Param: reels");
+        require(_params.symbols == 6, "Invalid Param: symbols");
+        /*require(_params.wildSymbol == 3, "Invalid Param: rows");
+        require(_params.scatterSymbol == 5, "Invalid Param: reels");
+        require(_params.bonusSymbol == 6, "Invalid Param: symbols");*/
+
+        // Configurable
+        require(_params.payoutConstant > 0, "Invalid Param: payoutConstant");
+        require(_params.maxBetCredits > 0, "Invalid Param: maxBetCredits");
+        require(_params.maxJackpotCredits > 0, "Invalid Param: maxJackpotCredits");
+        require(_params.creditSizeWad > 0, "Invalid Param: creditSizeWad");
+        _;
+    }
+
     constructor(
-        ERC20 asset, string memory name, string memory symbol,
-        ChainlinkConsumer.VRFParams memory vrfParams
+        ERC20VaultPaymentProcessor.VaultParams memory vaultParams,
+        ChainlinkConsumer.VRFParams memory vrfParams,
+        address owner
     )
         ChainlinkConsumer(vrfParams)
-        ERC20VaultPaymentProcessor(asset, name, symbol)
-        MultiLineSlots(getInitialParams(), getInitialWinlines())
+        ERC20VaultPaymentProcessor(vaultParams)
+        MultiLineSlots(getInitialParams(), getInitialWinlines(), owner)
     {}
 
     function getSession(uint256 betId) internal view override

@@ -6,6 +6,8 @@ import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
 import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 
+import { Owned } from "solmate/auth/Owned.sol";
+
 // Largest symbol that can be parsed from each 4 bit section of the board
 uint256 constant MAX_SYMBOL = 15;
 // Default Jackpot is a 1/1024 chance if the largest symbol is hit
@@ -36,7 +38,7 @@ struct SlotSession {
 }
 
 // Base contract for other Slots contracts to derive from with core logic
-abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver {
+abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver, Owned {
     SlotParams public params;
 
     event BetPlaced(address indexed user, uint256 betId);
@@ -73,10 +75,20 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
     }
 
     modifier sanitizeParams(SlotParams memory _params) virtual {
+        require(_params.rows > 0 && _params.rows <= 8, "Invalid Param: rows");
+        require(_params.reels > 0 && _params.reels <= 8, "Invalid Param: reels");
+        require(_params.symbols > 0 && _params.symbols <= 15, "Invalid Param: symbols");
+        require(_params.payoutConstant > 0, "Invalid Param: payoutConstant");
+        require(_params.maxBetCredits > 0, "Invalid Param: maxBetCredits");
+        require(_params.maxJackpotCredits > 0, "Invalid Param: maxJackpotCredits");
+        require(_params.creditSizeWad > 0, "Invalid Param: creditSizeWad");
         _;
     }
 
-    constructor(SlotParams memory slotParams) sanitizeParams(slotParams) {
+    constructor(SlotParams memory slotParams, address owner)
+        sanitizeParams(slotParams)
+        Owned(owner)
+    {
         params = slotParams;
     }
 
@@ -190,4 +202,12 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
     function getSession(uint256 betId) internal view virtual returns (SlotSession memory session);
     function startSession(uint256 betId, SlotSession memory session) internal virtual;
     function endSession(uint256 betId) internal virtual;
+
+    /*
+        Governance related methods
+    */
+
+    function setParams(SlotParams memory _params) external onlyOwner() sanitizeParams(_params) {
+        params = _params;
+    }
 }

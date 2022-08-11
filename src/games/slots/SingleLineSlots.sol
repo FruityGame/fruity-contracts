@@ -6,7 +6,7 @@ import { Board } from "src/libraries/Board.sol";
 
 // Optimised for single paylines only
 abstract contract SingleLineSlots is BaseSlots {
-    constructor(SlotParams memory slotParams) BaseSlots(slotParams) {}
+    constructor(SlotParams memory slotParams, address owner) BaseSlots(slotParams, owner) {}
 
     /*
         Core Logic

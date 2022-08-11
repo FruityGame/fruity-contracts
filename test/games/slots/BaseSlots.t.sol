@@ -26,7 +26,8 @@ contract BaseSlotsTest is Test {
 
     function setUp() public virtual {
         slots = new MockBaseSlots(
-            SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18)
+            SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
+            address(this)
         );
     }
 
@@ -257,7 +258,8 @@ contract BaseSlotsTest is Test {
         // this contract can process, it is assumed that the machine is configured with no
         // scatter symbol functionality
         MockBaseSlots slotsNoScatter = new MockBaseSlots(
-            SlotParams(3, 5, 6, WILDCARD, 7, 255, 115, 20, 5, 500, 1e18)
+            SlotParams(3, 5, 6, WILDCARD, 7, 255, 115, 20, 5, 500, 1e18),
+            address(this)
         );
 
         SlotSession memory session = SlotSession(address(this), 1e18, 0, 0);
