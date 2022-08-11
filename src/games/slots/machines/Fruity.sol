@@ -35,7 +35,8 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     function endSession(uint256 betId) internal override {
         if (sessions[betId].betWad == 0) revert InvalidSession(sessions[betId].user, betId);
 
-        sessions[betId].betWad = 0;
+        // Apparently cheaper than assigning to 0
+        delete sessions[betId].betWad;
     }
 
     // I hate this language so much

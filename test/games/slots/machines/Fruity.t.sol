@@ -35,14 +35,9 @@ contract FruityTest is Test {
     function testFulfillBet() public {
         uint256 betId = fruity.placeBet(1, 536169616821538800036600934927570202961204380927034107000682);
 
-        emit log_uint(fruity.availableAssets());
-
         vrf.fulfill(
             betId,
             WINNING_ENTROPY
         );
-
-        emit log_uint(token.balanceOf(address(this)));
-        emit log_uint(token.balanceOf(address(fruity)));
     }
 }

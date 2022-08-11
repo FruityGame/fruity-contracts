@@ -72,12 +72,6 @@ library Checkpoints {
         return (old, value);
     }
 
-    /**
-     * @dev Pushes a value onto a History, by updating the latest value using binary operation `op`. The new value will
-     * be set to `op(latest, delta)`.
-     *
-     * Returns previous value and new value.
-     */
     function push(
         History storage history,
         function(uint256, uint256) view returns (uint256) op,

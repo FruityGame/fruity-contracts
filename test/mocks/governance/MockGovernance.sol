@@ -9,6 +9,9 @@ import { MockERC20VaultPaymentProcessor } from "test/mocks/payment/MockERC20Vaul
 contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
     using Checkpoints for Checkpoints.History;
 
+    uint256 public beforeExecuteCalls;
+    uint256 public afterExecuteCalls;
+
     constructor(
         uint256 minProposalDeposit, Governance.Params memory governanceParams,
         ERC20 asset, string memory name, string memory symbol
@@ -18,11 +21,31 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
     {}
 
     function afterBurn(address owner, address receiver, uint256 shares) internal override(Governance, MockERC20VaultPaymentProcessor) {
-        super.afterBurn(owner, receiver, shares);
+        Governance.afterBurn(owner, receiver, shares);
     }
 
     function afterDeposit(address owner, uint256 assets, uint256 shares) internal override(Governance, MockERC20VaultPaymentProcessor) {
-        super.afterDeposit(owner, assets, shares);
+        Governance.afterDeposit(owner, assets, shares);
+    }
+
+    function _beforeExecute(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal virtual override {
+        beforeExecuteCalls++;
+    }
+
+    function _afterExecute(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal virtual override {
+        afterExecuteCalls++;
     }
 
     /*
@@ -30,17 +53,15 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
     */
     function setProposal(
         uint256 proposalId,
-        uint256 voteStart,
-        uint256 voteEnd,
-        uint8 executionStatus,
+        uint256 statusStartBlock,
+        uint8 status,
         uint256 depositTotal,
         Governance.Params memory params
     ) external {
         Proposal storage proposal = proposals[proposalId];
         
-        proposal.voteStart = uint128(voteStart);
-        proposal.voteEnd = uint120(voteEnd);
-        proposal.executionStatus = executionStatus;
+        proposal.statusStartBlock = uint248(statusStartBlock);
+        proposal.status = status;
         proposal.depositTotal = depositTotal;
         proposal.params = params;
     }
@@ -57,29 +78,18 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
 
     function setVotes(
         uint256 proposalId,
-        uint256 yes,
-        uint256 no,
-        uint256 abstain,
-        uint256 noWithVeto
+        uint256[4] memory votes
     ) external {
         Ballot storage ballot = ballots[proposalId];
-        
-        ballot.yes = yes;
-        ballot.no = no;
-        ballot.abstain = abstain;
-        ballot.noWithVeto = noWithVeto;
+        ballot.votes = votes;
     }
 
-    function setHasVoted(
+    function setVotingRecord(
         uint256 proposalId,
         address who,
-        bool status
+        uint8 status
     ) external {
-        ballots[proposalId].hasVoted[who] = status;
-    }
-
-    function _quorumReachedExternal(uint256 proposalId) external returns (bool) {
-        return _quorumReached(proposalId);
+        ballots[proposalId].record[who] = status;
     }
 
     function pushTotalSupplyCheckpoint(uint256 _totalSupply) external {
@@ -88,5 +98,9 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
 
     function getTotalSupplyCheckpoint(uint256 blockNumber) external returns (uint256) {
         return totalSupplyCheckpoints.getAtBlock(blockNumber);
+    }
+
+    function getDeposit(uint256 proposalId, address user) external returns (uint256) {
+        return proposals[proposalId].deposits[user];
     }
 }
