@@ -96,6 +96,10 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         Core Logic
     */
 
+    function getParams() public view returns (SlotParams memory) {
+        return params;
+    }
+
     function beginBet(SlotSession memory session) internal returns (uint256 requestId) {
         takePayment(session);
 

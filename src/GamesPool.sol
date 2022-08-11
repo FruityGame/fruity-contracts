@@ -8,7 +8,12 @@ import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProce
 import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 
 contract GamesPool is Governance, ERC20VaultPaymentProcessor, ExternalPaymentProcessor, RolesAuthority {
+    uint8 constant AUTHORIZED_GAME = 1;
+
     modifier canAfford(uint256 amount) override {_;}
+
+    event GameAdded(address indexed game);
+    event GameRemoved(address indexed game);
 
     constructor(
         uint256 minProposalDeposit,
@@ -18,5 +23,19 @@ contract GamesPool is Governance, ERC20VaultPaymentProcessor, ExternalPaymentPro
         Governance(minProposalDeposit, governanceParams)
         ERC20VaultPaymentProcessor(vaultParams)
         RolesAuthority(msg.sender, this)
-    {}
+    {
+        // Setup roles
+        setRoleCapability(AUTHORIZED_GAME, address(this), this.depositExternal.selector, true);
+        setRoleCapability(AUTHORIZED_GAME, address(this), this.withdrawExternal.selector, true);
+    }
+
+    function addGame(address game) external onlyGovernance() {
+        setUserRole(game, AUTHORIZED_GAME, true);
+        emit GameAdded(game);
+    }
+
+    function removeGame(address game) external onlyGovernance() {
+        setUserRole(game, AUTHORIZED_GAME, false);
+        emit GameRemoved(game);
+    }
 }

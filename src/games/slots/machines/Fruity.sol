@@ -15,9 +15,9 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
         require(_params.rows == 3, "Invalid Param: rows");
         require(_params.reels == 5, "Invalid Param: reels");
         require(_params.symbols == 6, "Invalid Param: symbols");
-        /*require(_params.wildSymbol == 3, "Invalid Param: rows");
-        require(_params.scatterSymbol == 5, "Invalid Param: reels");
-        require(_params.bonusSymbol == 6, "Invalid Param: symbols");*/
+        /*require(_params.wildSymbol == 255, "Invalid Param: wildSymbol");
+        require(_params.scatterSymbol == 255, "Invalid Param: scatterSymbol");
+        require(_params.bonusSymbol == 255, "Invalid Param: bonusSymbol");*/
 
         // Configurable
         require(_params.payoutConstant > 0, "Invalid Param: payoutConstant");
@@ -41,17 +41,17 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     returns (SlotSession memory session) {
         session = sessions[betId];
 
-        if (session.betWad == 0) revert InvalidSession(session.user, betId);
+        if (session.betWad == 0) revert InvalidSession(msg.sender, betId);
     }
 
     function startSession(uint256 betId, SlotSession memory session) internal override {
-        if (session.betWad == 0) revert InvalidSession(session.user, betId);
+        if (session.betWad == 0) revert InvalidSession(msg.sender, betId);
 
         sessions[betId] = session;
     }
 
     function endSession(uint256 betId) internal override {
-        if (sessions[betId].betWad == 0) revert InvalidSession(sessions[betId].user, betId);
+        if (sessions[betId].betWad == 0) revert InvalidSession(msg.sender, betId);
 
         // Apparently cheaper than assigning to 0
         delete sessions[betId].betWad;
@@ -66,8 +66,8 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
         out[15] = 474; out[16] = 415; out[17] = 985; out[18] = 669; out[19] = 874;
     }
 
-    function getInitialParams() private pure returns (SlotParams memory out) {
-        out = SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 500, 1e15);
+    function getInitialParams() private pure returns (SlotParams memory) {
+        return SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 500, 1e15);
     }
 
     /*

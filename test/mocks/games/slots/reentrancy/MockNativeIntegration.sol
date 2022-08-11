@@ -4,10 +4,11 @@ pragma solidity ^0.8;
 import "src/games/slots/SingleLineSlots.sol";
 
 import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
-import "test/mocks/payment/MockPaymentProcessor.sol";
+import "src/payment/NativePaymentProcessor.sol";
 import "test/mocks/MockVRF.sol";
 
-contract MockSingleLineSlots is SingleLineSlots, MockLocalJackpotResolver, MockPaymentProcessor, MockVRF {
+// Sample integration with the NativePaymentProcessor, for testing reentrancy scenarios
+contract MockNativeIntegration is SingleLineSlots, MockLocalJackpotResolver, NativePaymentProcessor, MockVRF {
     mapping(uint256 => SlotSession) public sessions;
 
     constructor(
@@ -21,26 +22,19 @@ contract MockSingleLineSlots is SingleLineSlots, MockLocalJackpotResolver, MockP
     returns (SlotSession memory session) {
         session = sessions[betId];
 
-        if (session.betWad == 0) revert InvalidSession(session.user, betId);
+        if (session.betWad == 0) revert InvalidSession(msg.sender, betId);
     }
 
     function startSession(uint256 betId, SlotSession memory session) internal override {
-        if (session.betWad == 0) revert InvalidSession(session.user, betId);
+        if (session.betWad == 0) revert InvalidSession(msg.sender, betId);
 
         sessions[betId] = session;
     }
 
     function endSession(uint256 betId) internal override {
-        if (sessions[betId].betWad == 0) revert InvalidSession(sessions[betId].user, betId);
+        if (sessions[betId].betWad == 0) revert InvalidSession(msg.sender, betId);
 
         sessions[betId].betWad = 0;
-    }
-
-    /*
-        Methods to expose internal logic for testing
-    */
-    function checkWinlineExternal(uint256 board) external view returns(uint256, uint256) {
-        return checkWinline(board, params);
     }
 }
 

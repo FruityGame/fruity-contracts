@@ -121,10 +121,6 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
         return fulfillRandomness(id, randomness);
     }
 
-    function getParams() external view returns (SlotParams memory _params) {
-        return params;
-    }
-
     /*
         Methods to set mock values for internal logic testing
     */
