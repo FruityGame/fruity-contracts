@@ -141,7 +141,8 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         uint256 board,
         SlotParams memory _params
     ) internal pure virtual returns (uint256 count) {
-        for (uint256 i = 0; i < _params.reels * _params.rows; ++i) {
+        uint256 boardSize = _params.reels * _params.rows;
+        for (uint256 i = 0; i < boardSize; ++i) {
             if (Board.get(board, i) == _params.scatterSymbol) ++count;
         }
     }
