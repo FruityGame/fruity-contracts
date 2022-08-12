@@ -435,8 +435,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         Proposal storage proposal = proposals[proposalId];
         uint256[NUM_VOTES] storage votes = ballots[proposalId].votes;
 
-        uint256 votesForNo = votes[NO_VOTE] + votes[NO_WITH_VETO_VOTE];
-        uint256 tallyWithoutAbstain = votesForNo + votes[YES_VOTE];
+        uint256 tallyWithoutAbstain = votes[NO_VOTE] + votes[NO_WITH_VETO_VOTE] + votes[YES_VOTE];
         uint256 tally = tallyWithoutAbstain + votes[ABSTAIN_VOTE];
 
         // If noWithVeto makes up <x>% of the vote
