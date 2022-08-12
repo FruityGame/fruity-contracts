@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
 abstract contract RandomnessBeacon {
     function requestRandomness() internal virtual returns (uint256);

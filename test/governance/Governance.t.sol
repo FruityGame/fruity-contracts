@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
 import { IGovernor } from "src/governance/IGovernor.sol";
@@ -78,7 +78,7 @@ contract GovernanceTest is Test {
         uint256 value,
         bytes memory _calldata,
         string memory description
-    ) internal view
+    ) internal pure
     returns (ProposalHelper memory) {
         address[] memory targets = new address[](1);
         targets[0] = target;

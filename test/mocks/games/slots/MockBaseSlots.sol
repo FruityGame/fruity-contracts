@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
 import "src/games/slots/BaseSlots.sol";
@@ -22,10 +22,10 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
         BaseSlots Method Mocks
     */
     function processSession(
-        uint256 board,
-        uint256 randomness,
-        SlotSession memory _session,
-        SlotParams memory _params
+        uint256,
+        uint256,
+        SlotSession memory,
+        SlotParams memory
     ) internal override returns (uint256 payoutWad) {
         return processSessionResult;
     }
@@ -47,7 +47,7 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
         _deposit(_session.user, _session.betWad);
     }
 
-    function takeJackpot(SlotSession memory _session, SlotParams memory _params) internal override {
+    function takeJackpot(SlotSession memory _session, SlotParams memory) internal override {
         jackpotWad += _session.betWad / 3;
     }
 
@@ -82,11 +82,11 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
     /*
         Payment Processor mocks
     */
-    function _deposit(address from, uint256 paymentWad) internal override {
+    function _deposit(address, uint256 paymentWad) internal override {
         balance += paymentWad;
     }
 
-    function _withdraw(address to, uint256 paymentWad) internal override {
+    function _withdraw(address, uint256 paymentWad) internal override {
         require(endSessionCalled, "Attempted to payout before the session was ended");
         balance -= paymentWad;
     }

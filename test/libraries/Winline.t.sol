@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
 import "src/libraries/Winline.sol";
@@ -11,7 +11,7 @@ contract WinlineTest is Test {
 
     function setUp() public virtual {}
 
-    function constructWinline(uint256 len, uint256 rowSize) internal view returns (uint256 out) {
+    function constructWinline(uint256 len, uint256 rowSize) internal pure returns (uint256 out) {
         if (len == 0) return 0;
 
         uint256 shift = rowSize * 2;

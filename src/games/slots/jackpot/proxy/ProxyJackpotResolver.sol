@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 import { ExternalJackpotResolver } from "src/games/slots/jackpot/proxy/ExternalJackpotResolver.sol";
@@ -11,7 +11,7 @@ abstract contract ProxyJackpotResolver is JackpotResolver {
         proxyResolver = _proxyResolver;
     }
 
-    function addToJackpot(uint256 _jackpotWad, uint256 max) internal virtual override {
+    function addToJackpot(uint256 _jackpotWad, uint256) internal virtual override {
         proxyResolver.addToJackpotExternal(_jackpotWad);
     }
 

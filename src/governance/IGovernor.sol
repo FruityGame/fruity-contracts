@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
 // OpenZeppelin Governor interface without name() as Solmate ERC20 already defines name
 abstract contract IGovernor {

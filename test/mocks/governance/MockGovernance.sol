@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Governance } from "src/governance/Governance.sol";
@@ -30,21 +30,21 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
     }
 
     function _beforeExecute(
-        uint256 proposalId,
-        address[] memory targets,
+        uint256,
+        address[] memory,
         uint256[] memory,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
+        bytes[] memory,
+        bytes32
     ) internal virtual override {
         beforeExecuteCalls++;
     }
 
     function _afterExecute(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
+        uint256,
+        address[] memory,
+        uint256[] memory,
+        bytes[] memory,
+        bytes32
     ) internal virtual override {
         afterExecuteCalls++;
     }
@@ -97,11 +97,11 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
         totalSupplyCheckpoints.push(_totalSupply);
     }
 
-    function getTotalSupplyCheckpoint(uint256 blockNumber) external returns (uint256) {
+    function getTotalSupplyCheckpoint(uint256 blockNumber) external view returns (uint256) {
         return totalSupplyCheckpoints.getAtBlock(blockNumber);
     }
 
-    function getDeposit(uint256 proposalId, address user) external returns (uint256) {
+    function getDeposit(uint256 proposalId, address user) external view returns (uint256) {
         return proposals[proposalId].deposits[user];
     }
 }

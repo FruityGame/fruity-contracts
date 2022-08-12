@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "src/payment/PaymentProcessor.sol";
 
 abstract contract MockPaymentProcessor is PaymentProcessor {
     uint256 public balance = 0;
 
-    function _deposit(address from, uint256 paymentWad) internal override {
+    function _deposit(address, uint256 paymentWad) internal override {
         balance += paymentWad;
     }
 
-    function _withdraw(address to, uint256 paymentWad) internal override {
+    function _withdraw(address, uint256 paymentWad) internal override {
         balance -= paymentWad;
     }
 

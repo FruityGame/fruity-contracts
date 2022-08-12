@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
 import { ERC4626Native } from "src/mixins/ERC4626Native.sol";
 import { NativePaymentProcessor } from "src/payment/NativePaymentProcessor.sol";

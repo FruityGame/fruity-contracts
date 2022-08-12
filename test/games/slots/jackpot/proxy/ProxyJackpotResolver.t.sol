@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
 import "test/mocks/games/slots/jackpot/proxy/MockExternalJackpotResolver.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
 

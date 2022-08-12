@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 abstract contract JackpotResolver {
     event JackpotChanged(uint256 oldValue, uint256 newValue);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 import { SlotParams } from "src/games/slots/BaseSlots.sol";

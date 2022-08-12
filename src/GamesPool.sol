@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Governance } from "src/governance/Governance.sol";
 import { RolesAuthority } from "solmate/auth/authorities/RolesAuthority.sol";
 import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
@@ -25,8 +24,8 @@ contract GamesPool is Governance, ERC20VaultPaymentProcessor, ExternalPaymentPro
         RolesAuthority(msg.sender, this)
     {
         // Setup roles
-        setRoleCapability(AUTHORIZED_GAME, address(this), this.depositExternal.selector, true);
-        setRoleCapability(AUTHORIZED_GAME, address(this), this.withdrawExternal.selector, true);
+        //setRoleCapability(AUTHORIZED_GAME, address(this), GamesPool.depositExternal.selector, true);
+        setRoleCapability(AUTHORIZED_GAME, address(this), ExternalPaymentProcessor.withdrawExternal.selector, true);
     }
 
     function addGame(address game) external onlyGovernance() {

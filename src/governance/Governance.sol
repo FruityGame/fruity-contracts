@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity 0.8.7;
 
 import { SafeCastLib } from "solmate/utils/SafeCastLib.sol";
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
@@ -327,7 +327,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function _execute(
-        uint256 proposalId,
+        uint256,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,

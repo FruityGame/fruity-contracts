@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 import "solmate/auth/authorities/RolesAuthority.sol";
 import "src/games/slots/jackpot/proxy/ExternalJackpotResolver.sol";
