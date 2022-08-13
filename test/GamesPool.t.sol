@@ -69,6 +69,9 @@ contract GamesPoolTest is Test {
             address(game)
         );
 
+        // Roll beyond minDurationHeld so our balance is factored into quorum()
+        vm.roll(govParams.minDurationHeld + 1);
+
         // Create a proposal with sufficient deposit (will be immediately Active)
         uint256 proposalId = gamesPool.proposeWithDeposit(
             targets,
@@ -80,13 +83,13 @@ contract GamesPoolTest is Test {
         );
 
         // Roll forward to voting period
-        vm.roll(4);
+        vm.roll(block.number + 1);
 
         // Vote yes
         gamesPool.castVote(proposalId, uint8(Governance.Vote.Yes));
 
         // Roll forward to end voting period
-        vm.roll(2 + govParams.votingPeriod);
+        vm.roll(block.number + govParams.votingPeriod + 1);
 
         // Execute the governance proposal
         gamesPool.execute(targets, values, calldatas, keccak256("Add Game"));
