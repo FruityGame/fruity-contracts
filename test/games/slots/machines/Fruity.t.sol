@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.7;
+/*pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
 
@@ -7,7 +7,8 @@ import { Board } from "src/libraries/Board.sol";
 import { SlotParams, BaseSlots } from "src/games/slots/BaseSlots.sol";
 import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 import { Fruity } from "src/games/slots/machines/Fruity.sol";
-import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
+import { ProxyPaymentProcessor } from "src/payment/proxy/ProxyPaymentProcessor.sol";
 
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/MockERC20.sol";
@@ -34,7 +35,7 @@ contract FruityTest is Test {
         fruity = new Fruity(
             ERC20VaultPaymentProcessor.VaultParams(token, "Fruity Shares", "vFRTY"),
             ChainlinkConsumer.VRFParams(address(vrf), address(0), bytes32(0), uint64(0)),
-            address(this)
+            
         );
 
         fruityParams = fruity.getParams();
@@ -123,4 +124,4 @@ contract FruityTest is Test {
         emit log_uint(token.balanceOf(address(this)) / 1e18);
         emit log_uint(token.balanceOf(address(fruity)) / 1e18);
     }*/
-}
+//}

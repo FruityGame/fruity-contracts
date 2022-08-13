@@ -9,7 +9,7 @@ import { AbstractERC4626 } from "src/mixins/AbstractERC4626.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Taken from Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is ERC20, AbstractERC4626 {
+abstract contract ERC4626 is AbstractERC4626 {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 

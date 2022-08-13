@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.7;
+pragma solidity >=0.8.0 < 0.9.0;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
 import { AbstractERC4626 } from "src/mixins/AbstractERC4626.sol";
 
-abstract contract ERC4626Native is ERC20, AbstractERC4626 {
+abstract contract ERC4626Native is AbstractERC4626 {
     using FixedPointMathLib for uint256;
 
     constructor(

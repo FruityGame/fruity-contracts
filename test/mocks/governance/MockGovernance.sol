@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.7;
+pragma solidity ^0.8;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { Governance } from "src/governance/Governance.sol";
 import { Checkpoints } from "src/libraries/Checkpoints.sol";
+import { AbstractERC4626 } from "src/mixins/AbstractERC4626.sol";
 import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
 import { MockERC20VaultPaymentProcessor } from "test/mocks/payment/MockERC20VaultPaymentProcessor.sol";
 
@@ -14,20 +15,12 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
     uint256 public afterExecuteCalls;
 
     constructor(
-        uint256 minProposalDeposit, Governance.Params memory governanceParams,
-        ERC20 asset, string memory name, string memory symbol
+        Governance.ExternalParams memory governanceParams,
+        ERC20VaultPaymentProcessor.VaultParams memory vaultParams
     )
-        Governance(minProposalDeposit, governanceParams)
-        MockERC20VaultPaymentProcessor(ERC20VaultPaymentProcessor.VaultParams(asset, name, symbol))
+        Governance(governanceParams)
+        MockERC20VaultPaymentProcessor(vaultParams)
     {}
-
-    function afterBurn(address owner, address receiver, uint256 shares) internal override(Governance, MockERC20VaultPaymentProcessor) {
-        Governance.afterBurn(owner, receiver, shares);
-    }
-
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override(Governance, MockERC20VaultPaymentProcessor) {
-        Governance.afterDeposit(owner, assets, shares);
-    }
 
     function _beforeExecute(
         uint256,
@@ -56,13 +49,15 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
         uint256 proposalId,
         uint256 statusStartBlock,
         uint8 status,
+        bool urgent,
         uint256 depositTotal,
-        Governance.Params memory params
+        Governance.InternalParams memory params
     ) external {
         Proposal storage proposal = proposals[proposalId];
         
-        proposal.statusStartBlock = uint248(statusStartBlock);
+        proposal.statusStartBlock = uint240(statusStartBlock);
         proposal.status = status;
+        proposal.urgent = urgent;
         proposal.depositTotal = depositTotal;
         proposal.params = params;
     }
@@ -103,5 +98,29 @@ contract MockGovernance is Governance, MockERC20VaultPaymentProcessor {
 
     function getDeposit(uint256 proposalId, address user) external view returns (uint256) {
         return proposals[proposalId].deposits[user];
+    }
+
+    /*
+        ERC20 Hooks Overrides
+    */
+
+    function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual override(Governance, MockERC20VaultPaymentProcessor) {
+        Governance._afterMint(to, newBalance, newTotalSupply);
+    }
+
+    function _afterBurn(address from, uint256 newBalance, uint256 newTotalSupply) internal virtual override(Governance, MockERC20VaultPaymentProcessor) {
+        Governance._afterMint(from, newBalance, newTotalSupply);
+    }
+
+    function _afterTransfer(address from, address to, uint256 fromNewBalance, uint256 toNewBalance) internal virtual override(Governance, MockERC20VaultPaymentProcessor) {
+        Governance._afterTransfer(from, to, fromNewBalance, toNewBalance);
+    }
+
+    /*
+        ERC4626 Hook Overrides
+    */
+
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual override(ERC20VaultPaymentProcessor, AbstractERC4626) {
+        ERC20VaultPaymentProcessor.beforeWithdraw(assets, shares);
     }
 }

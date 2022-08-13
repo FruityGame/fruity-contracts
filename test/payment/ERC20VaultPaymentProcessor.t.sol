@@ -23,6 +23,8 @@ contract ERC20VaultPaymentProcessorTest is Test {
         paymentProcessor = new MockERC20VaultPaymentProcessor(
             ERC20VaultPaymentProcessor.VaultParams(token, "Mock Vault", "MVT")
         );
+
+        token.approve(address(paymentProcessor), 2e18);
     }
 
     function checkERC4626Invariants() internal {

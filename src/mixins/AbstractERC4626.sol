@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.7;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC20Hooks } from "src/tokens/ERC20Hooks.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract AbstractERC4626 is ERC20 {
+abstract contract AbstractERC4626 is ERC20Hooks {
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -28,7 +28,7 @@ abstract contract AbstractERC4626 is ERC20 {
         string memory _name,
         string memory _symbol,
         uint8 decimals
-    ) ERC20(_name, _symbol, decimals) {}
+    ) ERC20Hooks(_name, _symbol, decimals) {}
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
@@ -50,8 +50,6 @@ abstract contract AbstractERC4626 is ERC20 {
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
-
-        afterBurn(owner, receiver, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -75,8 +73,6 @@ abstract contract AbstractERC4626 is ERC20 {
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
-
-        afterBurn(owner, receiver, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -147,9 +143,7 @@ abstract contract AbstractERC4626 is ERC20 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual;
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
 
-    function afterBurn(address owner, address receiver, uint256 shares) internal virtual;
-
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual;
+    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual {}
 }

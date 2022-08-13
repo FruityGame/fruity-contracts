@@ -308,4 +308,13 @@ contract BaseSlotsTest is Test {
         // Ensure the jackpot has been incremented
         assertEq(slots.jackpotWad(), uint256(1e18) / 3);
     }
+    
+    function testGovernanceParams() public {
+        vm.expectRevert("UNAUTHORIZED");
+        vm.prank(address(0xDEADBEEF));
+        slots.setParams(SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18));
+
+        // Should pass as the test owner is the owner of the contract (as the governance contract will be)
+        slots.setParams(SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18));
+    }
 }

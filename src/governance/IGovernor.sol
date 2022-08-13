@@ -7,14 +7,12 @@ abstract contract IGovernor {
         The layout of this struct is purposeful:
         Deposit is Index 0, so the default value when a proposal is initiated in storage (as uint8)
     */
+    // Could change this to a bitfield for more succinct testing of state equality/truthfulness, but
+    // not worth the performance increase in any way (saves about 40~ gas for a 4-way boolean check)
     enum ProposalState {
-        // Deposit, Executed and Failed are all purposefully aligned next to one another
-        // so that we can simply evaluate whether proposal.state < 3 to check whether we're one
-        // of the three
         Deposit,
         Executed,
         Failed,
-        //
         Voting,
         Expired,
         Passed,
@@ -32,7 +30,8 @@ abstract contract IGovernor {
         uint256[] values,
         bytes[] calldatas,
         uint8 status,
-        uint248 statusStartBlock,
+        uint240 statusStartBlock,
+        bool urgent,
         string description
     );
 
@@ -44,7 +43,6 @@ abstract contract IGovernor {
     /*
         Auxillary methods
     */
-    function version() public view virtual returns (string memory);
 
     function COUNTING_MODE() public pure virtual returns (string memory);
 
@@ -63,9 +61,11 @@ abstract contract IGovernor {
 
     function proposalQuorum(uint256 proposalId) public view virtual returns (uint256);
 
-    //function votingDelay() public view virtual returns (uint256);
+    function proposalDeposit(uint256 proposalId) public view virtual returns (uint256);
 
-    //function votingPeriod() public view virtual returns (uint256);
+    function getTallyFor(uint256 proposalId, uint8 vote) public view virtual returns (uint256);
+
+    function getUserVote(uint256 proposalId, address account) public view virtual returns (uint8);
 
     function quorum(uint256 proposalId) public view virtual returns (bool);
 
@@ -77,7 +77,8 @@ abstract contract IGovernor {
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
-        string memory description
+        string memory description,
+        bool urgent
     ) public virtual returns (uint256 proposalId);
 
     function proposeWithDeposit(
@@ -85,6 +86,7 @@ abstract contract IGovernor {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description,
+        bool urgent,
         uint256 deposit
     ) public virtual returns (uint256 proposalId);
 

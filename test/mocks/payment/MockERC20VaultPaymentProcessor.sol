@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.7;
+pragma solidity ^0.8;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
@@ -25,8 +25,12 @@ contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
     }
 
     /*
-        ERC4626 Hooks
+        ERC20 Hooks
     */
-    function afterBurn(address owner, address receiver, uint256 shares) internal virtual override {}
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal virtual override {}
+
+    function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual override {}
+
+    function _afterBurn(address from, uint256 newBalance, uint256 newTotalSupply) internal virtual override {}
+
+    function _afterTransfer(address from, address to, uint256 fromNewBalance, uint256 toNewBalance) internal virtual override {}
 }

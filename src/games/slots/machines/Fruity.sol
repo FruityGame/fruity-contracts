@@ -4,10 +4,11 @@ pragma solidity 0.8.7;
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SlotParams, SlotSession, MultiLineSlots } from "src/games/slots/MultiLineSlots.sol";
 import { LocalJackpotResolver } from "src/games/slots/jackpot/LocalJackpotResolver.sol";
-import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import { ProxyPaymentProcessor } from "src/payment/proxy/ProxyPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
 import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 
-contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProcessor, ChainlinkConsumer {
+contract Fruity is MultiLineSlots, LocalJackpotResolver, ProxyPaymentProcessor, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
     modifier sanitizeParams(SlotParams memory _params) override {
@@ -28,13 +29,12 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     }
 
     constructor(
-        ERC20VaultPaymentProcessor.VaultParams memory vaultParams,
         ChainlinkConsumer.VRFParams memory vrfParams,
-        address owner
+        ExternalPaymentProcessor externalPaymentProcessor
     )
         ChainlinkConsumer(vrfParams)
-        ERC20VaultPaymentProcessor(vaultParams)
-        MultiLineSlots(getInitialParams(), getInitialWinlines(), owner)
+        ProxyPaymentProcessor(externalPaymentProcessor)
+        MultiLineSlots(getInitialParams(), getInitialWinlines(), address(externalPaymentProcessor))
     {}
 
     function getSession(uint256 betId) internal view override
@@ -69,10 +69,4 @@ contract Fruity is MultiLineSlots, LocalJackpotResolver, ERC20VaultPaymentProces
     function getInitialParams() private pure returns (SlotParams memory) {
         return SlotParams(3, 5, 6, 255, 255, 255, 115, 20, 5, 500, 1e15);
     }
-
-    /*
-        ERC4626 Hooks
-    */
-    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
 }

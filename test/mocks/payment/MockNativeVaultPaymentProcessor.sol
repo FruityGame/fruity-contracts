@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.7;
+pragma solidity ^0.8;
 
 import "src/payment/vault/NativeVaultPaymentProcessor.sol";
 
@@ -24,8 +24,12 @@ contract MockNativeVaultPaymentProcessor is NativeVaultPaymentProcessor {
     }
 
     /*
-        ERC4626 Hooks
+        ERC20 Hooks
     */
-    function afterBurn(address owner, address receiver, uint256 shares) internal override {}
-    function afterDeposit(address owner, uint256 assets, uint256 shares) internal override {}
+
+    function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual override {}
+
+    function _afterBurn(address from, uint256 newBalance, uint256 newTotalSupply) internal virtual override {}
+
+    function _afterTransfer(address from, address to, uint256 fromNewBalance, uint256 toNewBalance) internal virtual override {}
 }
