@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
 library Bloom {
     function encode(bytes32 item, uint256 index) internal pure returns (uint256) {

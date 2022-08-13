@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity 0.8.7;
 
-import "src/randomness/Beacon.sol";
+import "src/randomness/RandomnessBeacon.sol";
 
 struct VRFParams {
     uint256 i;
 }
 
-abstract contract RandomnessConsumer is Beacon {
+abstract contract HarmonyConsumer is RandomnessBeacon {
     constructor(VRFParams memory params){}
 
     function requestRandomness() internal override returns (uint256) {
