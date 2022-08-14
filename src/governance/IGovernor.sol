@@ -20,6 +20,14 @@ abstract contract IGovernor {
         RejectedWithVeto
     }
 
+    enum Vote {
+        None, // Reserve slot 0
+        No,
+        Yes,
+        Abstain,
+        NoWithVeto
+    }
+
     /*
         Events
     */

@@ -4,22 +4,21 @@ pragma solidity 0.8.7;
 import "forge-std/Test.sol";
 
 import { IGovernor } from "src/governance/IGovernor.sol";
-import { Governance } from "src/governance/Governance.sol";
-import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import { Governor } from "src/governance/Governor.sol";
 
-import { MockERC20 } from "test/mocks/MockERC20.sol";
-import { MockGovernance } from "test/mocks/governance/MockGovernance.sol";
+import { MockERC20Snapshot } from "test/mocks/tokens/MockERC20Snapshot.sol";
+import { MockGovernor } from "test/mocks/governance/MockGovernor.sol";
 
 import { Math } from "src/libraries/Math.sol";
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
-contract GovernanceTest is Test {
+contract GovernorTest is Test {
     using FixedPointMathLib for uint256;
 
-    MockGovernance governance;
-    MockERC20 token;
+    MockGovernor governance;
+    MockERC20Snapshot token;
 
-    Governance.ExternalParams governanceParams;
+    Governor.ExternalParams governanceParams;
 
     ProposalHelper mockProposal;
 
@@ -55,24 +54,22 @@ contract GovernanceTest is Test {
     event DepositBurned(address indexed burner, uint256 indexed proposalId, uint256 amount);
 
     function setUp() public virtual {
-        token = new MockERC20(0);
+        token = new MockERC20Snapshot(0);
+
         // depositPeriodEnd, votePeriodEnd, yesThreshold, noWithVetoThreshold, quorumThreshold, requiredDeposit
-        governanceParams = Governance.ExternalParams(
+        governanceParams = Governor.ExternalParams(
             10e18,
-            Governance.InternalParams(10, 20, 50, 33, 40, 66, 1, 20e18)
+            Governor.InternalParams(10, 20, 50, 33, 40, 66, 1, 20e18)
         );
-        governance = new MockGovernance(
-            governanceParams,
-            ERC20VaultPaymentProcessor.VaultParams(token, "Mock Governance", "MGT")
-        );
+        governance = new MockGovernor(token, governanceParams);
 
         bytes memory _calldata = abi.encodeWithSelector(
-            MockERC20.mintExternal.selector,
+            MockERC20Snapshot.mintExternal.selector,
             address(this),
             1e18
         );
 
-        mockProposal = generateGovernanceProp(
+        mockProposal = generateGovernorProp(
             address(token),
             0,
             _calldata,
@@ -80,7 +77,7 @@ contract GovernanceTest is Test {
         );
     }
 
-    function generateGovernanceProp(
+    function generateGovernorProp(
         address target,
         uint256 value,
         bytes memory _calldata,
@@ -103,19 +100,19 @@ contract GovernanceTest is Test {
 
     function testHashProposal() public {
         bytes memory _calldata = abi.encodeWithSelector(
-            MockERC20.mintExternal.selector,
+            MockERC20Snapshot.mintExternal.selector,
             address(this),
             1e18
         );
 
-        ProposalHelper memory proposalOne = generateGovernanceProp(
+        ProposalHelper memory proposalOne = generateGovernorProp(
             address(token), // Target Contract
             0, // Ether Value
             _calldata,
             "Hello, World!"
         );
 
-        ProposalHelper memory proposalTwo = generateGovernanceProp(
+        ProposalHelper memory proposalTwo = generateGovernorProp(
             address(token),
             0,
             _calldata,
@@ -142,7 +139,7 @@ contract GovernanceTest is Test {
     function testQuorumReached() public {
         // Set total supply. As per parameters in setup hook, requires
         // > 40% (4e18) in the case of 10e18 total supply
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
         vm.roll(governanceParams.internalParams.minDurationHeld + 1);
 
         // Create a proposal with ID 0
@@ -191,7 +188,7 @@ contract GovernanceTest is Test {
 
     function testStateLifecycle() public {
         // Set total supply as propose() does.
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
 
         // Move forward to the minimumStakingDuration, ensuring the above
         // totalSupply snapshot is valid for this proposal
@@ -282,7 +279,7 @@ contract GovernanceTest is Test {
 
     function testStateUrgent() public {
         // Set total supply as propose() does.
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
 
         // Move forward to the minimumStakingDuration, ensuring the above
         // totalSupply snapshot is valid for this proposal
@@ -334,13 +331,11 @@ contract GovernanceTest is Test {
     function testGetVote() public {
         // Setup our test with some Vault Shares
         token.mintExternal(address(this), 1e18);
-        token.approve(address(governance), 1e18);
-        governance.deposit(1e18, address(this));
 
         // Move forward a block to allow the Checkpoint to become valid
         vm.roll(2);
 
-        assertEq(governance.getVotes(address(this), 1), governance.balanceOf(address(this)));
+        assertEq(governance.getVotes(address(this), 1), token.balanceOf(address(this)));
     }
 
     function testProposalSnapshot() public {
@@ -349,8 +344,6 @@ contract GovernanceTest is Test {
 
         // Make a deposit at Block 1
         token.mintExternal(address(this), 1e18);
-        token.approve(address(governance), 1e18);
-        governance.deposit(1e18, address(this));
 
         // Create a proposal at block 5
         governance.setProposal(
@@ -372,14 +365,12 @@ contract GovernanceTest is Test {
     function testCastVote() public {
         // Deposit shares at block 1
         token.mintExternal(address(this), 1e18);
-        token.approve(address(governance), 1e18);
-        governance.deposit(1e18, address(this));
 
-        uint256 voteShares = governance.balanceOf(address(this));
+        uint256 voteShares = token.balanceOf(address(this));
 
         // Increase total supply to simulate others' deposits, so
         // our vote doesn't cause the proposal to immediately pass for this test
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
 
         // Roll forward beyond the min staking duration to have
         // our shares become elegible for use in Voting
@@ -398,7 +389,7 @@ contract GovernanceTest is Test {
         // Roll forward to voting period (deposit is active + beyond minDurationHeld)
         vm.roll(block.number + 1);
 
-        uint8 yesVote = uint8(Governance.Vote.Yes);
+        uint8 yesVote = uint8(IGovernor.Vote.Yes);
 
         // Vote yes
         vm.expectEmit(true, false, false, true);
@@ -414,7 +405,7 @@ contract GovernanceTest is Test {
     }
 
     function testCastVoteNoShares() public {
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
 
         // Roll forward beyond the min staking duration to have
         // our shares become elegible for use in Voting
@@ -432,7 +423,7 @@ contract GovernanceTest is Test {
 
         // Ensure an appropriate error is thrown for the user to interpret
         vm.expectRevert("Insufficient shares to vote with");
-        governance.castVote(0, uint8(Governance.Vote.Yes));
+        governance.castVote(0, uint8(IGovernor.Vote.Yes));
     }
 
     function testCastVoteMinimumStakingDuration() public {
@@ -441,8 +432,6 @@ contract GovernanceTest is Test {
 
         // Make our deposit on Block 1
         token.mintExternal(address(this), 1e18);
-        token.approve(address(governance), 1e18);
-        governance.deposit(1e18, address(this));
 
         // Move forward to just before the minDurationHeld
         vm.roll(minDurationHeld);
@@ -463,7 +452,7 @@ contract GovernanceTest is Test {
         // Attempt to vote yes, ensure our vote fails due to 0 shares
         // being considered because of minDurationHeld
         vm.expectRevert("Insufficient shares to vote with");
-        governance.castVote(0, uint8(Governance.Vote.Yes));
+        governance.castVote(0, uint8(IGovernor.Vote.Yes));
     }
 
     function testCastVoteInvalidVote() public {
@@ -490,14 +479,12 @@ contract GovernanceTest is Test {
     function testCastVoteChangeVote() public {
         // Deposit shares at block 1
         token.mintExternal(address(this), 1e18);
-        token.approve(address(governance), 1e18);
-        governance.deposit(1e18, address(this));
 
-        uint256 voteShares = governance.balanceOf(address(this));
+        uint256 voteShares = token.balanceOf(address(this));
 
         // Increase total supply to simulate others' deposits, so
         // our vote doesn't cause the proposal to immediately pass for this test
-        governance.pushTotalSupplyCheckpoint(10e18);
+        token.pushTotalSupplyCheckpoint(10e18);
 
         // Roll forward beyond the min staking duration to have our shares
         // become elegible for use in Voting
@@ -516,8 +503,8 @@ contract GovernanceTest is Test {
         // Roll forward to voting period
         vm.roll(block.number + 1);
 
-        uint8 yesVote = uint8(Governance.Vote.Yes);
-        uint8 noVote = uint8(Governance.Vote.No);
+        uint8 yesVote = uint8(IGovernor.Vote.Yes);
+        uint8 noVote = uint8(IGovernor.Vote.No);
 
         // Vote yes
         governance.castVote(0, yesVote);
@@ -539,7 +526,7 @@ contract GovernanceTest is Test {
 
     function testCastVoteInvalidProposal() public {
         vm.expectRevert("Invalid Proposal");
-        governance.castVote(0, uint8(Governance.Vote.Yes));
+        governance.castVote(0, uint8(IGovernor.Vote.Yes));
     }
 
     function testCastVoteInactiveProposal() public {
@@ -557,20 +544,19 @@ contract GovernanceTest is Test {
         vm.roll(2);
 
         vm.expectRevert("Proposal is not in Voting Period");
-        governance.castVote(0, uint8(Governance.Vote.Yes));
+        governance.castVote(0, uint8(IGovernor.Vote.Yes));
 
         // Roll forward to end of voting period
         vm.roll(governanceParams.internalParams.votingPeriod + 1);
 
         vm.expectRevert("Proposal is not in Voting Period");
-        governance.castVote(0, uint8(Governance.Vote.Yes));
+        governance.castVote(0, uint8(IGovernor.Vote.Yes));
     }
 
     function testPropose() public {
         // Deposit enough shares to create a proposal, but not activate it
         token.mintExternal(address(this), governanceParams.minDepositRequirement);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        governance.deposit(governanceParams.minDepositRequirement, address(this));
 
         uint256 proposalId = governance.hashProposal(
             mockProposal.targets,
@@ -602,8 +588,8 @@ contract GovernanceTest is Test {
 
         // Ensure balances are correct
         assertEq(governance.getDeposit(proposalId, address(this)), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(address(this)), 0);
-        assertEq(governance.balanceOf(address(governance)), governanceParams.minDepositRequirement);
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(governance)), governanceParams.minDepositRequirement);
     }
 
     function testProposeWithDepositSufficientDeposit() public {
@@ -612,7 +598,6 @@ contract GovernanceTest is Test {
         // Deposit enough shares to both create and insantly activate a proposal
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         uint256 proposalId = governance.hashProposal(
             mockProposal.targets,
@@ -644,8 +629,8 @@ contract GovernanceTest is Test {
         );
 
         assertEq(governance.getDeposit(proposalId, address(this)), deposit);
-        assertEq(governance.balanceOf(address(this)), 0);
-        assertEq(governance.balanceOf(address(governance)), deposit);
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(governance)), deposit);
 
         assertEq(uint8(governance.state(proposalId)), uint8(IGovernor.ProposalState.Voting));
     }
@@ -656,7 +641,6 @@ contract GovernanceTest is Test {
         // Deposit enough shares to both create and insantly activate a proposal
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         // Roll forward beyond minDurationHeld so our balance is elegible for voting
         vm.roll(governanceParams.internalParams.minDurationHeld + 1);
@@ -674,14 +658,14 @@ contract GovernanceTest is Test {
         assertEq(uint8(governance.state(proposalId)), uint8(IGovernor.ProposalState.Voting));
 
         // Cast a Supermajority yes vote on our Urgent deposit
-        governance.castVote(proposalId, uint8(Governance.Vote.Yes));
+        governance.castVote(proposalId, uint8(IGovernor.Vote.Yes));
 
         // Ensure the proposal has been immediately marked as `Passed`
         assertEq(uint8(governance.state(proposalId)), uint8(IGovernor.ProposalState.Passed));
 
         // Ensure the vote cannot be changed after the fact
         vm.expectRevert("Proposal is not in Voting Period");
-        governance.castVote(proposalId, uint8(Governance.Vote.No));
+        governance.castVote(proposalId, uint8(IGovernor.Vote.No));
     }
 
     function testProposeWithDepositInvalidDeposit() public {
@@ -695,7 +679,7 @@ contract GovernanceTest is Test {
             0
         );
 
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
 
         vm.expectRevert("Invalid Deposit");
         governance.proposeWithDeposit(
@@ -708,14 +692,12 @@ contract GovernanceTest is Test {
         );
 
         // Ensure our deposits haven't been received
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
     }
 
     function testProposeWithDepositInsufficientBalance() public {
-        token.mintExternal(address(this), governanceParams.minDepositRequirement);
+        token.mintExternal(address(this), governanceParams.minDepositRequirement - 1);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        // Deposit insufficient number of shares to make a deposit
-        governance.deposit(governanceParams.minDepositRequirement - 1, address(this));
 
         // Attempt to make a deposit > our deposited balance/shares
         vm.expectRevert("Insufficient Balance to make Deposit");
@@ -745,7 +727,7 @@ contract GovernanceTest is Test {
             governanceParams.minDepositRequirement
         );
 
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
 
         // Test with empty values
         vm.expectRevert("Invalid Proposal");
@@ -758,7 +740,7 @@ contract GovernanceTest is Test {
             governanceParams.minDepositRequirement
         );
 
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
 
         // Test with empty calldatas
         vm.expectRevert("Invalid Proposal");
@@ -771,7 +753,7 @@ contract GovernanceTest is Test {
             governanceParams.minDepositRequirement
         );
 
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
 
         // Test with all 3
         vm.expectRevert("Invalid Proposal");
@@ -784,14 +766,13 @@ contract GovernanceTest is Test {
             governanceParams.minDepositRequirement
         );
 
-        assertEq(governance.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(governance)), 0);
     }
 
     function testProposeWithDepositDuplicateProposal() public {
         // Setup our test with some Vault Shares
         token.mintExternal(address(this), governanceParams.minDepositRequirement);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        governance.deposit(governanceParams.minDepositRequirement, address(this));
 
         uint256 proposalId = governance.proposeWithDeposit(
             mockProposal.targets,
@@ -819,17 +800,11 @@ contract GovernanceTest is Test {
 
         // Setup our test users with some Vault Shares
         token.mintExternal(us, governanceParams.minDepositRequirement);
+        token.approve(address(governance), governanceParams.minDepositRequirement);
+
         token.mintExternal(them, governanceParams.minDepositRequirement);
-
-        // Deposit our shares
-        token.approve(address(governance), governanceParams.minDepositRequirement);
-        governance.deposit(governanceParams.minDepositRequirement, us);
-
-        // Deposit their shares
         vm.prank(them);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        vm.prank(them);
-        governance.deposit(governanceParams.minDepositRequirement, them);
 
         // Create a proposal as user (us)
         uint256 proposalId = governance.proposeWithDeposit(
@@ -863,16 +838,15 @@ contract GovernanceTest is Test {
         // Ensure balances are correct
         assertEq(governance.getDeposit(proposalId, us), governanceParams.minDepositRequirement);
         assertEq(governance.getDeposit(proposalId, them), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(us), 0);
-        assertEq(governance.balanceOf(them), 0);
-        assertEq(governance.balanceOf(address(governance)), governanceParams.minDepositRequirement * 2);
+        assertEq(token.balanceOf(us), 0);
+        assertEq(token.balanceOf(them), 0);
+        assertEq(token.balanceOf(address(governance)), governanceParams.minDepositRequirement * 2);
     }
 
     function testDepositIntoProposalInvalidDeposit() public {
         // Setup test with enough tokens to make a deposit
         token.mintExternal(address(this), governanceParams.minDepositRequirement);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        governance.deposit(governanceParams.minDepositRequirement, address(this));
 
         // Create a proposal
         uint256 proposalId = governance.propose(
@@ -899,8 +873,6 @@ contract GovernanceTest is Test {
         // Setup test with enough tokens to make a deposit
         token.mintExternal(address(this), governanceParams.minDepositRequirement);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        // Deposit short of the required deposit for activation
-        governance.deposit(governanceParams.minDepositRequirement, address(this));
 
         // Create a proposal
         uint256 proposalId = governance.propose(
@@ -910,6 +882,7 @@ contract GovernanceTest is Test {
             "Hello, World",
             false
         );
+        // Our 'shares' are now 0 after the deposit
 
         // Attempt to make a deposit without the necessary balance to cover the deposit
         vm.expectRevert("Insufficient Balance to make Deposit");
@@ -926,7 +899,6 @@ contract GovernanceTest is Test {
 
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         // Create a fully funded proposal
         uint256 proposalId = governance.proposeWithDeposit(
@@ -949,17 +921,11 @@ contract GovernanceTest is Test {
 
         // Setup our test users with some Vault Shares
         token.mintExternal(us, governanceParams.minDepositRequirement);
+        token.approve(address(governance), governanceParams.minDepositRequirement);
+
         token.mintExternal(them, governanceParams.minDepositRequirement);
-
-        // Deposit our shares
-        token.approve(address(governance), governanceParams.minDepositRequirement);
-        governance.deposit(governanceParams.minDepositRequirement, us);
-
-        // Deposit their shares
         vm.prank(them);
         token.approve(address(governance), governanceParams.minDepositRequirement);
-        vm.prank(them);
-        governance.deposit(governanceParams.minDepositRequirement, them);
 
         // Move beyond the minDurationHeld so our tokens become elegible for voting
         vm.roll(governanceParams.internalParams.minDurationHeld + 1);
@@ -994,9 +960,9 @@ contract GovernanceTest is Test {
 
         assertEq(governance.getDeposit(proposalId, us), 0);
         assertEq(governance.getDeposit(proposalId, them), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(address(governance)), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(us), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(them), 0);
+        assertEq(token.balanceOf(address(governance)), governanceParams.minDepositRequirement);
+        assertEq(token.balanceOf(us), governanceParams.minDepositRequirement);
+        assertEq(token.balanceOf(them), 0);
 
         // Mock a NoWithVeto vote majority
         governance.setVotes(proposalId, [0, 0, 0, governanceParams.minDepositRequirement]);
@@ -1017,9 +983,9 @@ contract GovernanceTest is Test {
 
         assertEq(governance.getDeposit(proposalId, us), 0);
         assertEq(governance.getDeposit(proposalId, them), 0);
-        assertEq(governance.balanceOf(address(governance)), 0);
-        assertEq(governance.balanceOf(us), governanceParams.minDepositRequirement);
-        assertEq(governance.balanceOf(them), governanceParams.minDepositRequirement);
+        assertEq(token.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(us), governanceParams.minDepositRequirement);
+        assertEq(token.balanceOf(them), governanceParams.minDepositRequirement);
 
         // Attempt to double claim
         vm.expectRevert("Invalid claim request");
@@ -1037,7 +1003,6 @@ contract GovernanceTest is Test {
         // Create a proposal with a sufficient deposit
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         // Create a fully funded proposal
         uint256 proposalId = governance.proposeWithDeposit(
@@ -1070,7 +1035,6 @@ contract GovernanceTest is Test {
         // Create a proposal with a sufficient deposit
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         uint256 expectedTotalSupply = token.totalSupply();
 
@@ -1112,12 +1076,9 @@ contract GovernanceTest is Test {
         governance.rakeDeposit(proposalId);
 
         // Ensure the shares have been burned
-        assertEq(governance.balanceOf(address(governance)), 0);
-        assertEq(governance.balanceOf(address(this)), 0);
-        assertEq(governance.totalSupply(), 0);
-
-        // Ensure the total supply of the underlying is unaffected
-        assertEq(token.totalSupply(), expectedTotalSupply);
+        assertEq(token.balanceOf(address(governance)), 0);
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.totalSupply(), 0);
 
         // Attempt to rake the proposal deposit again, already been raked
         vm.expectRevert("Invalid rake request");
@@ -1132,25 +1093,24 @@ contract GovernanceTest is Test {
     function testExecute() public {
         uint256 deposit = governanceParams.internalParams.depositRequirement;
         // New params to be set in the contracct
-        Governance.ExternalParams memory newParams = Governance.ExternalParams(
+        Governor.ExternalParams memory newParams = Governor.ExternalParams(
             5e18,
-            Governance.InternalParams(5, 20, 50, 33, 40, 66, 1, 10e18)
+            Governor.InternalParams(5, 20, 50, 33, 40, 66, 1, 10e18)
         );
 
         // Mint enough shares to make a deposit
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         // Move beyond the minDurationHeld so our tokens are factored into the quorum count
         vm.roll(governanceParams.internalParams.minDurationHeld + 1);
 
         // Setup the function to call
         bytes memory _calldata = abi.encodeWithSelector(
-            Governance.setParams.selector,
+            Governor.setParams.selector,
             newParams
         );
-        ProposalHelper memory _proposal = generateGovernanceProp(address(governance), 0, _calldata, "Test Proposal");
+        ProposalHelper memory _proposal = generateGovernorProp(address(governance), 0, _calldata, "Test Proposal");
 
         // Create a proposal with a sufficient deposit
         uint256 proposalId = governance.proposeWithDeposit(
@@ -1174,7 +1134,7 @@ contract GovernanceTest is Test {
         governance.execute(_proposal.targets, _proposal.values, _proposal.calldatas, keccak256("Test Proposal"));
 
         // Ensure the function has executed
-        (uint256 newMinDepositRequirement, Governance.InternalParams memory newInternalParams) = governance.params();
+        (uint256 newMinDepositRequirement, Governor.InternalParams memory newInternalParams) = governance.params();
         assertEq(newMinDepositRequirement, newParams.minDepositRequirement);
         assertEq(newInternalParams.depositPeriod, newParams.internalParams.depositPeriod);
         assertEq(newInternalParams.depositRequirement, newParams.internalParams.depositRequirement);
@@ -1189,24 +1149,23 @@ contract GovernanceTest is Test {
     function testExecuteFailure() public {
         uint256 deposit = governanceParams.internalParams.depositRequirement;
         // Setup some invalid parameters
-        Governance.ExternalParams memory newParams = Governance.ExternalParams(
+        Governor.ExternalParams memory newParams = Governor.ExternalParams(
             0,
-            Governance.InternalParams(0, 20, 50, 33, 40, 66, 1, 10e18)
+            Governor.InternalParams(0, 20, 50, 33, 40, 66, 1, 10e18)
         );
 
         token.mintExternal(address(this), deposit);
         token.approve(address(governance), deposit);
-        governance.deposit(deposit, address(this));
 
         // Move beyond the minDurationHeld so our tokens are factored into the quorum count
         vm.roll(governanceParams.internalParams.minDurationHeld + 1);
 
         // Setup the function to call with incorrect parameters
         bytes memory _calldata = abi.encodeWithSelector(
-            Governance.setParams.selector,
+            Governor.setParams.selector,
             newParams
         );
-        ProposalHelper memory _proposal = generateGovernanceProp(address(governance), 0, _calldata, "Test Proposal");
+        ProposalHelper memory _proposal = generateGovernorProp(address(governance), 0, _calldata, "Test Proposal");
 
         // Create a proposal with a sufficient deposit
         uint256 proposalId = governance.proposeWithDeposit(
@@ -1230,7 +1189,7 @@ contract GovernanceTest is Test {
         governance.execute(_proposal.targets, _proposal.values, _proposal.calldatas, keccak256("Test Proposal"));
 
         // Ensure the function has not changed the state
-        (uint256 newMinDepositRequirement, Governance.InternalParams memory internalParams) = governance.params();
+        (uint256 newMinDepositRequirement, Governor.InternalParams memory internalParams) = governance.params();
         assertEq(newMinDepositRequirement, governanceParams.minDepositRequirement);
         assertEq(internalParams.depositPeriod, governanceParams.internalParams.depositPeriod);
         assertEq(internalParams.depositRequirement, governanceParams.internalParams.depositRequirement);
@@ -1242,12 +1201,12 @@ contract GovernanceTest is Test {
         assertEq(governance.afterExecuteCalls(), 1);
     }
 
-    function testOnlyGovernance() public {
+    function testOnlyGovernor() public {
         // Attempt as test user
         vm.expectRevert("Permission denied");
         governance.setParams(governanceParams);
 
-        // Attempt as Governance
+        // Attempt as Governor
         vm.prank(address(governance));
         governance.setParams(governanceParams);
     }
@@ -1256,7 +1215,7 @@ contract GovernanceTest is Test {
     // TODO: Refactor this test to dynamically create structs with abi.encode/abi.decode,
     // or create a helper library, because I'm gonna need to do this a ton
     function testParamSanitization() public {
-        Governance.ExternalParams memory newParams = governanceParams;
+        Governor.ExternalParams memory newParams = governanceParams;
         
         // Invalid constants (must not be Zero)
         // minDepositRequirement, depositPeriod, votingPeriod, minDurationHeld, depositRequirement

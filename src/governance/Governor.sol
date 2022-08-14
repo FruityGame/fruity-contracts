@@ -5,12 +5,11 @@ import { SafeCastLib } from "solmate/utils/SafeCastLib.sol";
 import { FixedPointMathLib } from "solmate/utils/FixedPointMathLib.sol";
 
 import { Math } from "src/libraries/Math.sol";
+import { EIP712 } from "src/mixins/EIP712.sol";
 import { IGovernor } from "src/governance/IGovernor.sol";
-import { Checkpoints } from "src/libraries/Checkpoints.sol";
-import { AbstractERC4626 } from "src/mixins/AbstractERC4626.sol";
+import { ERC20Snapshot } from "src/tokens/ERC20Snapshot.sol";
 
-abstract contract Governance is IGovernor, AbstractERC4626 {
-    using Checkpoints for Checkpoints.History;
+contract Governor is IGovernor, EIP712 {
     using FixedPointMathLib for uint256;
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
@@ -47,14 +46,6 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         mapping(address => uint8) record;
     }
 
-    enum Vote {
-        None, // Reserve slot 0
-        No,
-        Yes,
-        Abstain,
-        NoWithVeto
-    }
-
     // Any params that don't need to be snapshotted per proposal can go in here
     struct ExternalParams {
         uint256 minDepositRequirement;
@@ -85,19 +76,17 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
                                             STORAGE
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
-    mapping(address => Checkpoints.History) internal sharesCheckpoints;
-    Checkpoints.History internal totalSupplyCheckpoints;
-
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => Ballot) internal ballots;
 
+    ERC20Snapshot public shares;
     ExternalParams public params;
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
                                             MODIFIERS
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
-    modifier onlyGovernance() virtual {
+    modifier onlyGovernor() virtual {
         require(msg.sender == address(this), "Permission denied");
         _;
     }
@@ -122,7 +111,10 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         _;
     }
 
-    constructor(ExternalParams memory _params) sanitizeParams(_params) {
+    constructor(ERC20Snapshot _shares, ExternalParams memory _params) sanitizeParams(_params)
+        EIP712("FruityGovernor", "1")
+    {
+        shares = _shares;
         params = _params;
     }
 
@@ -183,7 +175,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         uint256 tally = votes[NO_VOTE] + votes[YES_VOTE] + votes[ABSTAIN_VOTE] + votes[NO_WITH_VETO_VOTE];
         uint256 snapshotBlock = proposalSnapshot(proposalId);
 
-        uint256 historicalSupply = totalSupplyCheckpoints.getAtBlock(snapshotBlock);
+        uint256 historicalSupply = shares.getTotalSupplyAt(snapshotBlock);
         // Prevent DivideByZero and save performing the calculation below if it's unecessary
         if (tally == 0 || historicalSupply == 0) return false;
 
@@ -293,7 +285,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         delete proposal.deposits[msg.sender];
 
         // Send the tokens back to the sender (calls hooks)
-        _sendDeposit(msg.sender, depositAmount);
+        shares.transfer(msg.sender, depositAmount);
 
         emit DepositClaimed(msg.sender, proposalId, depositAmount);
     }
@@ -318,7 +310,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         delete proposal.depositTotal;
 
         // Remove the deposit from the share pool
-        _burn(address(this), depositAmount);
+        shares.transfer(address(0), depositAmount);
 
         emit DepositBurned(msg.sender, proposalId, depositAmount);
     }
@@ -367,21 +359,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         bytes32 r,
         bytes32 s
     ) public virtual override returns (uint256) {
-        address recoveredAddress = ecrecover(
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            VOTE_TYPEHASH,
-                            proposalId,
-                            vote
-                        )
-                    )
-                )
-            ), v, r, s
-        );
+        bytes32 message = keccak256(abi.encode(VOTE_TYPEHASH, proposalId, vote));
+        address recoveredAddress = ecrecover(hashTypedData(message), v, r, s);
 
         return _castVote(proposalId, recoveredAddress, vote, "");
     }
@@ -394,22 +373,8 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         bytes32 r,
         bytes32 s
     ) public virtual override returns (uint256) {
-        address recoveredAddress = ecrecover(
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            VOTE_WITH_REASON_TYPEHASH,
-                            proposalId,
-                            vote,
-                            reason
-                        )
-                    )
-                )
-            ), v, r, s
-        );
+        bytes32 message = keccak256(abi.encode(VOTE_WITH_REASON_TYPEHASH, proposalId, vote, reason));
+        address recoveredAddress = ecrecover(hashTypedData(message), v, r, s);
 
         return _castVote(proposalId, recoveredAddress, vote, reason);
     }
@@ -454,7 +419,7 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function getVotes(address account, uint256 blockNumber) public view virtual override returns (uint256) {
-        return sharesCheckpoints[account].getAtBlock(blockNumber);
+        return shares.getBalanceAt(account, blockNumber);
     }
 
     function hasVoted(uint256 proposalId, address account) public view virtual override returns (bool) {
@@ -478,11 +443,11 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     }
 
     function _deposit(uint256 proposalId, uint256 deposit) internal virtual returns (bool sufficientDeposit) {
-        require(balanceOf[msg.sender] >= deposit, "Insufficient Balance to make Deposit");
+        require(shares.balanceOf(msg.sender) >= deposit, "Insufficient Balance to make Deposit");
         Proposal storage proposal = proposals[proposalId];
 
         // Take the deposit from the user (calls hooks to update checkpoints)
-        transfer(address(this), deposit);
+        shares.transferFrom(msg.sender, address(this), deposit);
 
         // Add their deposit to the proposal
         sufficientDeposit = (proposal.depositTotal += deposit) >= proposal.params.depositRequirement;
@@ -567,23 +532,12 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
         // If snapshot block is 0, then our totalSupply must be Zero
         // (not possible for any totalSupply to be minted at block 0)
         // Also stops divide by zero
-        uint256 supplyAtSnapshot = totalSupplyCheckpoints.getAtBlock(proposalSnapshot(proposalId));
+        uint256 supplyAtSnapshot = shares.getTotalSupplyAt(proposalSnapshot(proposalId));
         if (supplyAtSnapshot == 0) return false;
 
         // Calculates using the totalSupply at the snapshot vs only a tally of those who've voted
         // This means > yesThresholdUrgent% of the totalSupply at snapshotBlock must have voted `yes`
         return yesVotes.mulDivUp(100, supplyAtSnapshot) > proposals[proposalId].params.yesThresholdUrgent;
-    }
-
-    function _sendDeposit(
-        address to,
-        uint256 amount
-    ) internal virtual returns (bool) {
-        emit Transfer(address(this), to, amount);
-
-        _afterTransfer(address(this), to, balanceOf[address(this)] -= amount, balanceOf[to] += amount);
-
-        return true;
     }
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
@@ -607,30 +561,10 @@ abstract contract Governance is IGovernor, AbstractERC4626 {
     ) internal virtual {}
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
-                                            ERC20 HOOKS
-    /////////////////////////////////////////////////////////////////////////////////////////*/
-
-    function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual override {
-        sharesCheckpoints[to].push(newBalance);
-        totalSupplyCheckpoints.push(newTotalSupply);
-    }
-
-    function _afterBurn(address from, uint256 newBalance, uint256 newTotalSupply) internal virtual override {
-        // Only update the shares for user `from` if they're not us (i.e. an internal burn)
-        if (from != address(this)) sharesCheckpoints[from].push(newBalance);
-        totalSupplyCheckpoints.push(newTotalSupply);
-    }
-
-    function _afterTransfer(address from, address to, uint256 fromNewBalance, uint256 toNewBalance) internal virtual override {
-        sharesCheckpoints[from].push(fromNewBalance);
-        sharesCheckpoints[to].push(toNewBalance);
-    }
-
-    /*/////////////////////////////////////////////////////////////////////////////////////////
                                         GOVERNANCE METHODS
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
-    function setParams(ExternalParams memory _params) external onlyGovernance() sanitizeParams(_params) {
+    function setParams(ExternalParams memory _params) external onlyGovernor() sanitizeParams(_params) {
         params = _params;
     }
 }

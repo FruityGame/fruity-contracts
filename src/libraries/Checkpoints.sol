@@ -23,7 +23,7 @@ library Checkpoints {
         return history._checkpoints[index - 1]._value;
     }
 
-    // Ensures the latest value for the user is not from a yet unmined block (for use in Governance)
+    // Ensures the latest value for the user is not from a yet unmined block (for use in Governor)
     function latestChecked(History storage history) internal view returns (uint256) {
         uint256 index = history._checkpoints.length;
         if (index == 0) return 0;

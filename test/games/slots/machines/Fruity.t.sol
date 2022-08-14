@@ -11,7 +11,7 @@ import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProce
 import { ProxyPaymentProcessor } from "src/payment/proxy/ProxyPaymentProcessor.sol";
 
 import "test/mocks/MockChainlinkVRF.sol";
-import "test/mocks/MockERC20.sol";
+import "test/mocks/tokens/MockERC20.sol";
 
 contract FruityTest is Test {
     uint256 constant ENTROPY = uint256(keccak256(abi.encodePacked(uint256(256))));

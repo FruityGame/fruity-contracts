@@ -1,7 +1,8 @@
-import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity 0.8.7;
+
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 /// @notice Modern and gas efficient ERC20 + EIP-2612 implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol)
@@ -14,12 +15,24 @@ abstract contract ERC20Hooks is ERC20 {
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {}
 
-    function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        _afterTransfer(msg.sender, to, balanceOf[msg.sender] -= amount, balanceOf[to] += amount);
+    function _transferFromUnchecked(address from, address to, uint256 amount) internal virtual returns (bool) {
+        //require(from != address(0), "ERC20 address(0) Invariant");
 
-        emit Transfer(msg.sender, to, amount);
+        if (to == address(0)) {
+            _burn(from, amount);
+            return true;
+        }
+
+        _afterTransfer(from, to, balanceOf[from] -= amount, balanceOf[to] += amount);
+
+        emit Transfer(from, to, amount);
 
         return true;
+    }
+
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        // Okay to call, as from will only ever be msg.sender
+        return _transferFromUnchecked(msg.sender, to, amount);
     }
 
     function transferFrom(
@@ -31,11 +44,8 @@ abstract contract ERC20Hooks is ERC20 {
 
         if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
 
-        _afterTransfer(from, to, balanceOf[from] -= amount, balanceOf[to] += amount);
-
-        emit Transfer(from, to, amount);
-
-        return true;
+        // Okay to call as allowances were checked above
+        return _transferFromUnchecked(from, to, amount);
     }
 
     /*//////////////////////////////////////////////////////////////

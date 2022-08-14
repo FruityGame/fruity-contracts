@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
-import "test/mocks/MockERC20.sol";
+import "test/mocks/tokens/MockERC20.sol";
 import "test/mocks/payment/MockERC20VaultPaymentProcessor.sol";
 
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";

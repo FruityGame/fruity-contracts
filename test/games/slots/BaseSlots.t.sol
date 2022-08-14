@@ -309,7 +309,7 @@ contract BaseSlotsTest is Test {
         assertEq(slots.jackpotWad(), uint256(1e18) / 3);
     }
     
-    function testGovernanceParams() public {
+    function testGovernorParams() public {
         vm.expectRevert("UNAUTHORIZED");
         vm.prank(address(0xDEADBEEF));
         slots.setParams(SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18));

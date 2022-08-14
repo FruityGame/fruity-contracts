@@ -209,7 +209,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
     function endSession(uint256 betId) internal virtual;
 
     /*
-        Governance related methods
+        Governor related methods
     */
 
     function setParams(SlotParams memory _params) external onlyOwner() sanitizeParams(_params) {
