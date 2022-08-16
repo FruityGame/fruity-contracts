@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
+import "src/upgrades/AddressRegistry.sol";
 import "src/games/slots/SingleLineSlots.sol";
 
 import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
-import "src/payment/NativePaymentProcessor.sol";
+import "src/payment/native/NativePaymentProcessor.sol";
 import "test/mocks/MockVRF.sol";
 
 // Sample integration with the NativePaymentProcessor, for testing reentrancy scenarios
@@ -13,9 +14,9 @@ contract MockNativeIntegration is SingleLineSlots, MockLocalJackpotResolver, Nat
 
     constructor(
         SlotParams memory slotParams,
-        address owner
+        AddressRegistry registry
     )
-        SingleLineSlots(slotParams, owner)
+        SingleLineSlots(slotParams, registry)
     {}
 
     function getSession(uint256 betId) internal view override

@@ -16,6 +16,9 @@ library Checkpoints {
         Checkpoint[] _checkpoints;
     }
 
+    error InvalidBlockNumber(uint256 blockNumber);
+    error InvalidIndex(uint256 index, uint256 historyLength);
+
     function latest(History storage history) internal view returns (uint256) {
         uint256 index = history._checkpoints.length;
         if (index == 0) return 0;
@@ -28,7 +31,9 @@ library Checkpoints {
         uint256 index = history._checkpoints.length;
         if (index == 0) return 0;
 
-        require(history._checkpoints[index - 1]._blockNumber < block.number, "Checkpoints: Block not yet mined");
+        if (history._checkpoints[index - 1]._blockNumber >= block.number) {
+            revert InvalidBlockNumber(history._checkpoints[index - 1]._blockNumber);
+        }
         return history._checkpoints[index - 1]._value;
     }
 
@@ -37,10 +42,10 @@ library Checkpoints {
     }
 
     function getAtBlockFromIndex(History storage history, uint256 blockNumber, uint256 index) internal view returns (uint256) {
-        require(blockNumber < block.number, "Checkpoints: Block not yet mined");
+        if (blockNumber >= block.number) revert InvalidBlockNumber(blockNumber);
 
         uint256 high = history._checkpoints.length;
-        require(index <= high, "Invalid Index");
+        if (index > high) revert InvalidIndex(index, high);
 
         // Optimistic check
         if (high != 0 && history._checkpoints[high - 1]._blockNumber <= blockNumber) {

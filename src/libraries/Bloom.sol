@@ -2,6 +2,8 @@
 pragma solidity 0.8.7;
 
 library Bloom {
+    error DuplicateElement(uint256 filter, bytes32 item);
+
     function encode(bytes32 item, uint256 index) internal pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(item, index))) % 256;
     }
@@ -26,7 +28,7 @@ library Bloom {
 
     function insertChecked(uint256 filter, bytes32 item) internal pure returns (uint256 out) {
         out = insert(filter, item);
-        require(filter != out, "Duplicate item detected");
+        if (filter == out) revert DuplicateElement(filter, item);
     }
 
     function contains(uint256 filter, bytes32 item) internal pure returns (bool) {

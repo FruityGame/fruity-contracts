@@ -2,39 +2,42 @@
 pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
+
+import { AddressRegistry } from "src/upgrades/AddressRegistry.sol";
 import { SlotParams, SlotSession, MultiLineSlots } from "src/games/slots/MultiLineSlots.sol";
 import { LocalJackpotResolver } from "src/games/slots/jackpot/LocalJackpotResolver.sol";
-import { ProxyPaymentProcessor } from "src/payment/proxy/ProxyPaymentProcessor.sol";
-import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
+import { RemotePaymentProcessor } from "src/payment/external/RemotePaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/external/ExternalPaymentProcessor.sol";
 import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 
-contract Fruity is MultiLineSlots, LocalJackpotResolver, ProxyPaymentProcessor, ChainlinkConsumer {
+contract Fruity is MultiLineSlots, LocalJackpotResolver, RemotePaymentProcessor, ChainlinkConsumer {
     mapping(uint256 => SlotSession) private sessions;
 
     modifier sanitizeParams(SlotParams memory _params) override {
-        // Constants
-        require(_params.rows == 3, "Invalid Param: rows");
-        require(_params.reels == 5, "Invalid Param: reels");
-        require(_params.symbols == 6, "Invalid Param: symbols");
+        
+        if (
+            _params.rows != 3 || // Constants
+            _params.reels != 5 ||
+            _params.symbols != 6 ||
+            _params.payoutConstant == 0 || // Configurables
+            _params.maxBetCredits == 0 ||
+            _params.maxJackpotCredits == 0 ||
+            _params.creditSizeWad == 0
+        ) revert InvalidParams();
         /*require(_params.wildSymbol == 255, "Invalid Param: wildSymbol");
         require(_params.scatterSymbol == 255, "Invalid Param: scatterSymbol");
         require(_params.bonusSymbol == 255, "Invalid Param: bonusSymbol");*/
-
-        // Configurable
-        require(_params.payoutConstant > 0, "Invalid Param: payoutConstant");
-        require(_params.maxBetCredits > 0, "Invalid Param: maxBetCredits");
-        require(_params.maxJackpotCredits > 0, "Invalid Param: maxJackpotCredits");
-        require(_params.creditSizeWad > 0, "Invalid Param: creditSizeWad");
         _;
     }
 
     constructor(
         ChainlinkConsumer.VRFParams memory vrfParams,
-        ExternalPaymentProcessor externalPaymentProcessor
+        ExternalPaymentProcessor externalPaymentProcessor,
+        AddressRegistry addressRegistry
     )
         ChainlinkConsumer(vrfParams)
-        ProxyPaymentProcessor(externalPaymentProcessor)
-        MultiLineSlots(getInitialParams(), getInitialWinlines(), address(externalPaymentProcessor))
+        RemotePaymentProcessor(externalPaymentProcessor)
+        MultiLineSlots(getInitialParams(), addressRegistry, getInitialWinlines())
     {}
 
     function getSession(uint256 betId) internal view override

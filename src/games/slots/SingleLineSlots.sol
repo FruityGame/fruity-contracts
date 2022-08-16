@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
+import { AddressRegistry } from "src/upgrades/AddressRegistry.sol";
 import { SlotParams, SlotSession, BaseSlots } from "src/games/slots/BaseSlots.sol";
 import { Board } from "src/libraries/Board.sol";
 
 // Optimised for single paylines only
 abstract contract SingleLineSlots is BaseSlots {
-    constructor(SlotParams memory slotParams, address owner) BaseSlots(slotParams, owner) {}
+    constructor(
+        SlotParams memory slotParams,
+        AddressRegistry addressRegistry
+    ) BaseSlots(slotParams, addressRegistry) {
+        // Setup Relayer role to allow SessionRelayer to proxy calls to this contract
+        getRolesWithCapability[address(this)][this.placeBetProxy.selector] |= bytes32(1 << uint8(Roles.Relayer));
+    }
 
     /*
         Core Logic
@@ -16,6 +23,16 @@ abstract contract SingleLineSlots is BaseSlots {
     returns (uint256 requestId) {
         return beginBet(
             SlotSession(msg.sender, credits * params.creditSizeWad, 0, 0)
+        );
+    }
+
+    // Should not be payable since the Proxy cannot forward on Eth
+    function placeBetProxy(address user, uint256 credits) public
+        requiresAuth() // Can only be called by the SessionRelayer
+        isValidBet(credits)
+    returns (uint256 requestId) {
+        return beginBet(
+            SlotSession(user, credits * params.creditSizeWad, 0, 0)
         );
     }
 

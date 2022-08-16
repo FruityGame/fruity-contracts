@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
+import "src/upgrades/AddressRegistry.sol";
 import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
 import "src/games/slots/BaseSlots.sol";
 
@@ -13,9 +14,9 @@ contract MockBaseSlots is BaseSlots, MockLocalJackpotResolver {
 
     constructor(
         SlotParams memory slotParams,
-        address owner
+        AddressRegistry registry
     )
-        BaseSlots(slotParams, owner)
+        BaseSlots(slotParams, registry)
     {}
 
     /*

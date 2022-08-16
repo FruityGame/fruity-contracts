@@ -4,8 +4,8 @@ pragma solidity 0.8.7;
 import { RolesAuthority } from "solmate/auth/authorities/RolesAuthority.sol";
 
 import { ERC20Snapshot } from "src/tokens/ERC20Snapshot.sol";
-import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
-import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/external/ExternalPaymentProcessor.sol";
+import { ERC20VaultPaymentProcessor } from "src/payment/erc20/ERC20VaultPaymentProcessor.sol";
 
 contract GamesPool is ERC20Snapshot, ERC20VaultPaymentProcessor, ExternalPaymentProcessor, RolesAuthority {
     enum Roles {
@@ -13,6 +13,7 @@ contract GamesPool is ERC20Snapshot, ERC20VaultPaymentProcessor, ExternalPayment
         Governor
     }
 
+    // TODO: IMPL
     modifier canAfford(uint256 amount) override {_;}
 
     event GameAdded(address indexed game);
@@ -25,14 +26,17 @@ contract GamesPool is ERC20Snapshot, ERC20VaultPaymentProcessor, ExternalPayment
         ERC20VaultPaymentProcessor(vaultParams)
         RolesAuthority(address(this), this)
     {
-        // Setup roles
         // (note): Calling setRoleCapability was reverting due to 0 code, I can't tell what that means. Solmate so based.
+
+        // Setup Game role
         getRolesWithCapability[address(this)][ExternalPaymentProcessor.withdrawExternal.selector] |= bytes32(1 << uint8(Roles.Game));
         getRolesWithCapability[address(this)][ExternalPaymentProcessor.depositExternal.selector] |= bytes32(1 << uint8(Roles.Game));
 
+        // Setup Governor role
         getRolesWithCapability[address(this)][GamesPool.addGame.selector] |= bytes32(1 << uint8(Roles.Governor));
         getRolesWithCapability[address(this)][GamesPool.removeGame.selector] |= bytes32(1 << uint8(Roles.Governor));
 
+        // Set the governorContract up with the role of Governor
         setUserRole(governorContract, uint8(Roles.Governor), true);
     }
 

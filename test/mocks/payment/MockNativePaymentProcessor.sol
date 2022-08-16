@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/payment/NativePaymentProcessor.sol";
+import "src/payment/native/NativePaymentProcessor.sol";
 import "src/payment/PaymentProcessor.sol";
 
 uint256 constant JACKPOT_RESERVATION = 20 * 1e18;

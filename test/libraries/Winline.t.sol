@@ -64,18 +64,29 @@ contract WinlineTest is Test {
     }
 
     function testGetNibbleMultiLineInvalidWinlineIndex() public {
-        vm.expectRevert("Invalid winline index provided");
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineIndex.selector, 25)
+        );
         Winline.getNibbleMultiLine(WINLINE_STUB, 25, 0, 5);
     }
 
     // Will fail because nibble index 0 is less than winline len 0
     function testGetNibbleMultiLineInvalidWinlineLen() public {
-        vm.expectRevert("Invalid winline nibble index provided");
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineNibbleIndex.selector, 0)
+        );
         Winline.getNibbleMultiLine(WINLINE_STUB, 0, 0, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineNibble.selector, 0)
+        );
+        Winline.getNibbleMultiLine(WINLINE_STUB, 0, 0, 256);
     }
 
     function testGetNibbleMultiLineInvalidNibbleIndex() public {
-        vm.expectRevert("Invalid winline nibble index provided");
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineNibbleIndex.selector, 5)
+        );
         Winline.getNibbleMultiLine(WINLINE_STUB, 0, 5, 5);
     }
 
@@ -84,12 +95,21 @@ contract WinlineTest is Test {
     }
 
     function testParseWinlineInvalidIndex() public {
-        vm.expectRevert("Invalid winline index provided");
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineIndex.selector, 25)
+        );
         Winline.parseWinline(WINLINE_STUB, 25, 5);
     }
 
     function testParseWinlineInvalidLen() public {
-        vm.expectRevert("Invalid winline length provided");
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineLength.selector, 0)
+        );
         Winline.parseWinline(WINLINE_STUB, 0, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Winline.InvalidWinlineLength.selector, 0)
+        );
+        Winline.parseWinline(WINLINE_STUB, 256, 0);
     }
 }

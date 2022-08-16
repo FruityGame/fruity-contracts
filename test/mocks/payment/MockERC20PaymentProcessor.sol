@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import "src/payment/ERC20PaymentProcessor.sol";
+import "src/payment/erc20/ERC20PaymentProcessor.sol";
 import "src/payment/PaymentProcessor.sol";
 
 uint256 constant JACKPOT_RESERVATION = 20 * 1e18;

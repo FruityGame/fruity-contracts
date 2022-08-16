@@ -7,8 +7,8 @@ import { Board } from "src/libraries/Board.sol";
 import { SlotParams, BaseSlots } from "src/games/slots/BaseSlots.sol";
 import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 import { Fruity } from "src/games/slots/machines/Fruity.sol";
-import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
-import { ProxyPaymentProcessor } from "src/payment/proxy/ProxyPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/external/ExternalPaymentProcessor.sol";
+import { RemotePaymentProcessor } from "src/payment/external/RemotePaymentProcessor.sol";
 
 import "test/mocks/MockChainlinkVRF.sol";
 import "test/mocks/tokens/MockERC20.sol";

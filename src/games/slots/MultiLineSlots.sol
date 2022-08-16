@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
+import { AddressRegistry } from "src/upgrades/AddressRegistry.sol";
 import { SlotParams, SlotSession, BaseSlots } from "src/games/slots/BaseSlots.sol";
 
 import { Winline } from "src/libraries/Winline.sol";
@@ -10,27 +11,50 @@ import { Board } from "src/libraries/Board.sol";
 // A winline based contract that matches from left to right
 abstract contract MultiLineSlots is BaseSlots {
     mapping(bytes32 => bool) public validWinlines;
-    
+
+    error InvalidWinline(bytes32 winline);
     error InvalidWinlineCount(uint256 count);
 
-    constructor(SlotParams memory slotParams, uint256[] memory winlines, address owner) BaseSlots(slotParams, owner) {
+    constructor(
+        SlotParams memory slotParams,
+        AddressRegistry addressRegistry,
+        uint256[] memory winlines
+    ) BaseSlots(slotParams, addressRegistry) {
         uint256 length = winlines.length;
-        if (length == 0) revert InvalidParams("Contract must be instantiated with at least 1 winline");
+        if (length == 0) revert InvalidParams();
 
         for (uint256 i = 0; i < length; ++i) {
             validWinlines[bytes32(winlines[i])] = true;
         }
+
+        // Setup Relayer role to allow SessionRelayer to proxy calls to this contract
+        getRolesWithCapability[address(this)][this.placeBetProxy.selector] |= bytes32(1 << uint8(Roles.Relayer));
     }
 
     /*
         Core Logic
     */
-    function placeBet(uint256 credits, uint256 winlines) public payable
+    function placeBet(uint256 credits, uint256 winlines) public payable virtual
         isValidBet(credits)
     returns (uint256 requestId) {
         return beginBet(
             SlotSession(
                 msg.sender,
+                credits * params.creditSizeWad,
+                winlines,
+                countWinlines(winlines, params.reels)
+            )
+        );
+    }
+
+    // Function is called through a true Proxy contract, should not accept Eth
+    function placeBetProxy(address user, uint256 credits, uint256 winlines) public virtual
+        requiresAuth() // Can only be called by the SessionRelayer
+        isValidBet(credits)
+    returns (uint256 requestId) {
+        return beginBet(
+            SlotSession(
+                user,
                 credits * params.creditSizeWad,
                 winlines,
                 countWinlines(winlines, params.reels)
@@ -93,7 +117,7 @@ abstract contract MultiLineSlots is BaseSlots {
         // While we have a winline (check the last two LSBs)
         while(winlines & 3 != 0) {
             bytes32 entry = bytes32(Winline.parseWinline(winlines, 0, reelCount));
-            require(validWinlines[entry], "Invalid winline parsed for contract");
+            if (!validWinlines[entry]) revert InvalidWinline(entry);
             // Ensure the winline isn't a duplicate
             bloom = Bloom.insertChecked(bloom, entry);
             // Shift over to the next winline

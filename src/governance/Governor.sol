@@ -73,6 +73,23 @@ contract Governor is IGovernor, EIP712 {
     event DepositBurned(address indexed burner, uint256 indexed proposalId, uint256 amount);
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
+                                            ERRORS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
+
+    error InsufficientDeposit(uint256 deposit);
+    error InsufficientVotes(address user);
+    error InsufficientBalance(uint256 balance);
+
+    error InvalidProposal(uint256 proposalId);
+    error InvalidState(uint256 _state);
+    error InvalidVote(uint256 vote);
+    error InvalidClaimRequest();
+    error InvalidRakeRequest();
+    error InvalidParams();
+
+    error DuplicateVote(address user, uint256 vote);
+
+    /*/////////////////////////////////////////////////////////////////////////////////////////
                                             STORAGE
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
@@ -92,22 +109,28 @@ contract Governor is IGovernor, EIP712 {
     }
 
     modifier isValidVote(uint256 vote) virtual {
-        require(vote > 0 && vote <= NUM_VOTE_OPTIONS, "Invalid Vote");
+        if (vote == 0 || vote > NUM_VOTE_OPTIONS) revert InvalidVote(vote);
         _;
     }
 
     modifier sanitizeParams(ExternalParams memory _params) virtual {
-        InternalParams memory internalParams = _params.internalParams;
-
-        require(_params.minDepositRequirement > 0, "Invalid Param: minDepositRequirement");
-        require(internalParams.depositPeriod > 0, "Invalid Param: depositPeriod");
-        require(internalParams.votingPeriod > 0, "Invalid Param: votingPeriod");
-        require(internalParams.yesThreshold > 0 && internalParams.yesThreshold <= 100, "Invalid Param: yesThreshold");
-        require(internalParams.noWithVetoThreshold > 0 && internalParams.noWithVetoThreshold <= 100, "Invalid Param: noWithVetoThreshold");
-        require(internalParams.quorumThreshold > 0 && internalParams.quorumThreshold <= 100, "Invalid Param: quorumThreshold");
-        require(internalParams.yesThresholdUrgent > 0 && internalParams.yesThresholdUrgent <= 100, "Invalid Param: yesThresholdUrgent");
-        require(internalParams.minDurationHeld > 0, "Invalid Param: minDurationHeld");
-        require(internalParams.depositRequirement > 0, "Invalid Param: depositRequirement");
+        if (
+            _params.minDepositRequirement == 0 ||
+            _params.internalParams.depositPeriod == 0 ||
+            _params.internalParams.votingPeriod == 0 ||
+            _params.internalParams.yesThreshold == 0 ||
+            _params.internalParams.yesThreshold > 100 ||
+            _params.internalParams.noWithVetoThreshold == 0 ||
+            _params.internalParams.noWithVetoThreshold > 100 ||
+            _params.internalParams.quorumThreshold == 0 ||
+            _params.internalParams.quorumThreshold > 100 ||
+            _params.internalParams.yesThresholdUrgent == 0 ||
+            _params.internalParams.yesThresholdUrgent > 100 ||
+            _params.internalParams.minDurationHeld == 0 ||
+            _params.internalParams.depositRequirement == 0
+        ) {
+            revert InvalidParams();
+        }
         _;
     }
 
@@ -130,7 +153,7 @@ contract Governor is IGovernor, EIP712 {
         Proposal storage proposal = proposals[proposalId];
 
         uint256 statusStartBlock = proposal.statusStartBlock;
-        require(statusStartBlock != 0, "Invalid Proposal");
+        if (statusStartBlock == 0) revert InvalidProposal(proposalId);
 
         // Get current status (Deposit (0) | Executed (1) | Failed (2) | Voting (3))
         uint8 status = proposal.status;
@@ -148,11 +171,11 @@ contract Governor is IGovernor, EIP712 {
 
         // If our status is Voting and have reached the end of the Voting Period (deadline)
         if (status == uint8(ProposalState.Voting) && block.number > statusStartBlock + proposal.params.votingPeriod) {
-            // No quorum means proposal has failed
-            if (!quorum(proposalId)) return ProposalState.Failed;
+            //if (!quorum(proposalId)) return ProposalState.Failed;
 
+            // No quorum means proposal has failed
             // ProposalState.Passed | ProposalState.Rejected | ProposalState.RejectedWithVeto
-            return _tally(proposalId);
+            return quorum(proposalId) ? _tally(proposalId) : ProposalState.Failed;
         }
 
         // ProposalState.Deposit | ProposalState.Voting | ProposalState.Executed | ProposalState.Failed
@@ -173,9 +196,7 @@ contract Governor is IGovernor, EIP712 {
 
         // Tally total # of votes received
         uint256 tally = votes[NO_VOTE] + votes[YES_VOTE] + votes[ABSTAIN_VOTE] + votes[NO_WITH_VETO_VOTE];
-        uint256 snapshotBlock = proposalSnapshot(proposalId);
-
-        uint256 historicalSupply = shares.getTotalSupplyAt(snapshotBlock);
+        uint256 historicalSupply = shares.getTotalSupplyAt(proposalSnapshot(proposalId));
         // Prevent DivideByZero and save performing the calculation below if it's unecessary
         if (tally == 0 || historicalSupply == 0) return false;
 
@@ -207,20 +228,19 @@ contract Governor is IGovernor, EIP712 {
         bool urgent,
         uint256 deposit
     ) public virtual override returns (uint256 proposalId) {
-        require(deposit >= params.minDepositRequirement, "Invalid Deposit");
+        if (deposit < params.minDepositRequirement) revert InsufficientDeposit(deposit);
+        proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
         // Ensure the received proposal actually contains something
-        require(
-            targets.length > 0 &&
-            targets.length == values.length &&
-            targets.length == calldatas.length,
-            "Invalid Proposal"
-        );
+        if (
+            targets.length == 0 ||
+            targets.length != values.length ||
+            targets.length != calldatas.length
+        ) revert InvalidProposal(proposalId);
 
         // Ensure proposal doesn't already exist
-        proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
         Proposal storage proposal = proposals[proposalId];
-        require(proposal.statusStartBlock == 0, "Proposal already exists");
+        if (proposal.statusStartBlock != 0) revert InvalidProposal(proposalId);
 
         // proposal.status is by default set to 0, which is `Deposit` in the `ProposalStatus` Enum
         proposal.statusStartBlock = uint240(block.number);
@@ -249,8 +269,10 @@ contract Governor is IGovernor, EIP712 {
     }
 
     function depositIntoProposal(uint256 proposalId, uint256 deposit) public virtual override {
-        require(deposit > 0, "Invalid deposit");
-        require(state(proposalId) == ProposalState.Deposit, "Proposal is not in Deposit stage");
+        if (deposit == 0) revert InsufficientDeposit(deposit);
+
+        ProposalState _state = state(proposalId);
+        if (_state != ProposalState.Deposit) revert InvalidState(uint256(_state));
 
         // If the deposit was sufficient for the Proposal depositRequirements, change to Voting state
         if (_deposit(proposalId, deposit)) {
@@ -268,18 +290,17 @@ contract Governor is IGovernor, EIP712 {
     function claimDeposit(uint256 proposalId) public virtual override {
         // State checks the validity of the proposalId
         ProposalState _state = state(proposalId);
-        require(
-            _state == ProposalState.Passed ||
-            _state == ProposalState.Failed ||
-            _state == ProposalState.Executed ||
-            _state == ProposalState.Expired,
-            "Invalid claim request"
-        );
+        if (
+            _state != ProposalState.Passed &&
+            _state != ProposalState.Failed &&
+            _state != ProposalState.Executed &&
+            _state != ProposalState.Expired
+        ) revert InvalidState(uint256(_state));
 
         // Ensure we've not already claimed
         Proposal storage proposal = proposals[proposalId];
         uint256 depositAmount = proposal.deposits[msg.sender];
-        require(depositAmount != 0, "Invalid claim request");
+        if(depositAmount == 0) revert InvalidClaimRequest();
 
         // Zero out their deposit
         delete proposal.deposits[msg.sender];
@@ -295,16 +316,15 @@ contract Governor is IGovernor, EIP712 {
     // their proposal, others would be able to claim their shares for a marginally larger portion of the pot.
     function rakeDeposit(uint256 proposalId) public virtual {
         ProposalState _state = state(proposalId);
-        require(
-            _state == ProposalState.Rejected ||
-            _state == ProposalState.RejectedWithVeto,
-            "Invalid rake request"
-        );
+        if (
+            _state != ProposalState.Rejected &&
+            _state != ProposalState.RejectedWithVeto
+        ) revert InvalidState(uint256(_state));
 
         // Ensure we've not already claimed
         Proposal storage proposal = proposals[proposalId];
         uint256 depositAmount = proposal.depositTotal;
-        require(depositAmount != 0, "Invalid rake request");
+        if (depositAmount == 0) revert InvalidRakeRequest();
 
         // Zero out the proposal deposit
         delete proposal.depositTotal;
@@ -322,7 +342,9 @@ contract Governor is IGovernor, EIP712 {
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256 proposalId) {
         proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-        require(state(proposalId) == ProposalState.Passed, "Could not execute proposal");
+
+        ProposalState _state = state(proposalId);
+        if (_state != ProposalState.Passed) revert InvalidState(uint256(_state));
 
         Proposal storage proposal = proposals[proposalId];
         proposal.status = uint8(ProposalState.Executed);
@@ -442,15 +464,18 @@ contract Governor is IGovernor, EIP712 {
         return blockNumber - delta;
     }
 
-    function _deposit(uint256 proposalId, uint256 deposit) internal virtual returns (bool sufficientDeposit) {
-        require(shares.balanceOf(msg.sender) >= deposit, "Insufficient Balance to make Deposit");
+    function _deposit(uint256 proposalId, uint256 deposit) internal virtual returns (bool isSufficientDeposit) {
+        uint256 balance = shares.balanceOf(msg.sender);
+        if (balance < deposit) revert InsufficientBalance(balance);
+
         Proposal storage proposal = proposals[proposalId];
 
         // Take the deposit from the user (calls hooks to update checkpoints)
         shares.transferFrom(msg.sender, address(this), deposit);
 
-        // Add their deposit to the proposal
-        sufficientDeposit = (proposal.depositTotal += deposit) >= proposal.params.depositRequirement;
+        // Add their deposit to the proposal,
+        // returning whether or not it was sufficient as per the deposit requirement
+        isSufficientDeposit = (proposal.depositTotal += deposit) >= proposal.params.depositRequirement;
         proposal.deposits[msg.sender] += deposit;
 
         emit DepositReceived(msg.sender, proposalId, deposit);
@@ -474,7 +499,8 @@ contract Governor is IGovernor, EIP712 {
     }
 
     function _castVote(uint256 proposalId, address voter, uint8 vote, string memory reason) internal virtual returns (uint256 weight) {
-        require(state(proposalId) == ProposalState.Voting, "Proposal is not in Voting Period");
+        ProposalState _state = state(proposalId);
+        if (_state != ProposalState.Voting) revert InvalidState(uint256(_state));
 
         weight = getVotes(voter, proposalSnapshot(proposalId));
         _recordVote(proposalId, voter, vote, weight);
@@ -488,12 +514,12 @@ contract Governor is IGovernor, EIP712 {
         uint8 vote,
         uint256 weight
     ) internal virtual isValidVote(vote) {
-        require(weight > 0, "Insufficient shares to vote with");
+        if (weight == 0) revert InsufficientVotes(account);
         // `vote` is an index from 1-4 as per the Vote enum
         Ballot storage ballot = ballots[proposalId];
         uint8 existingVote = ballot.record[account];
 
-        require(vote != existingVote, "Vote already cast");
+        if (vote == existingVote) revert DuplicateVote(account, vote);
 
         // If we're changing our vote
         if (existingVote != uint8(Vote.None)) {

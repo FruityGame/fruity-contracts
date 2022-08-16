@@ -4,16 +4,18 @@ pragma solidity 0.8.7;
 import "forge-std/Test.sol";
 
 import "src/games/slots/BaseSlots.sol";
-import "src/payment/NativePaymentProcessor.sol";
+import "src/payment/native/NativePaymentProcessor.sol";
 
 import { MockNativeCancelReentrancy } from "test/mocks/games/slots/reentrancy/MockNativeReentrancy.sol";
 import { MockNativeIntegration } from "test/mocks/games/slots/reentrancy/MockNativeIntegration.sol";
+import { MockAddressRegistry } from "test/mocks/upgrades/MockAddressRegistry.sol";
 
 contract NativeReentrancyTest is Test {
     uint256 constant ENTROPY = uint256(keccak256(abi.encodePacked(uint256(256))));
     uint256 constant WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(12345))));
 
     MockNativeCancelReentrancy maliciousContract;
+    MockAddressRegistry addressRegistry;
     MockNativeIntegration slots;
 
     SlotParams slotParams;
@@ -23,9 +25,10 @@ contract NativeReentrancyTest is Test {
 
     function setUp() public virtual {
         maliciousContract = new MockNativeCancelReentrancy();
+        addressRegistry = new MockAddressRegistry();
         slots = new MockNativeIntegration(
             SlotParams(3, 5, 6, 255, 255, 255, 105, 0, 5, 500, 1e18),
-            address(this)
+            addressRegistry
         );
 
         deal(address(maliciousContract), 100e18);

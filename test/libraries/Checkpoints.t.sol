@@ -49,7 +49,7 @@ contract CheckpointsTest is Test {
         assertEq(history.latestChecked(), 6);
 
         vm.roll(9);
-        vm.expectRevert("Checkpoints: Block not yet mined");
+        vm.expectRevert(abi.encodeWithSelector(Checkpoints.InvalidBlockNumber.selector, 10));
         history.latestChecked();
     }
 
@@ -77,7 +77,7 @@ contract CheckpointsTest is Test {
         assertEq(getAtNextBlock(10, history), 6);
 
         vm.roll(1);
-        vm.expectRevert("Checkpoints: Block not yet mined");
+        vm.expectRevert(abi.encodeWithSelector(Checkpoints.InvalidBlockNumber.selector, 15));
         history.getAtBlock(15);
     }
 

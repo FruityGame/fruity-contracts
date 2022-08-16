@@ -9,14 +9,12 @@ import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
 
 abstract contract ChainlinkConsumer is RandomnessBeacon, VRFConsumerBaseV2 {
     VRFCoordinatorV2Interface private immutable coordinator;
-    LinkTokenInterface private immutable link;
 
     bytes32 private immutable keyHash;
     uint64 private immutable subscriptionId;
 
     struct VRFParams {
         address coordinator;
-        address link;
         bytes32 keyHash;
         uint64 subscriptionId;
     }
@@ -27,7 +25,6 @@ abstract contract ChainlinkConsumer is RandomnessBeacon, VRFConsumerBaseV2 {
         VRFConsumerBaseV2(params.coordinator)
     {
         coordinator = VRFCoordinatorV2Interface(params.coordinator);
-        link = LinkTokenInterface(params.link);
         keyHash = params.keyHash;
         subscriptionId = params.subscriptionId;
     }

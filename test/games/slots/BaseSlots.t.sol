@@ -4,6 +4,7 @@ pragma solidity 0.8.7;
 import "forge-std/Test.sol";
 import "test/mocks/games/slots/MockBaseSlots.sol";
 
+import { MockAddressRegistry } from "test/mocks/upgrades/MockAddressRegistry.sol";
 import { Board } from "src/libraries/Board.sol";
 
 contract BaseSlotsTest is Test {
@@ -23,11 +24,13 @@ contract BaseSlotsTest is Test {
     event BetCancelled(address indexed user, uint256 betId);
 
     MockBaseSlots slots;
+    MockAddressRegistry addressRegistry;
 
     function setUp() public virtual {
+        addressRegistry = new MockAddressRegistry();
         slots = new MockBaseSlots(
             SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            address(this)
+            addressRegistry
         );
     }
 
@@ -89,7 +92,7 @@ contract BaseSlotsTest is Test {
         uint256 count = entropyToCount(entropy >> 16, params);
 
         if (symbol == SCATTER) {
-            vm.expectRevert("Symbol cannot be a scatter symbol");
+            vm.expectRevert(abi.encodeWithSelector(BaseSlots.InvalidSymbol.selector, SCATTER));
             slots.resolveSymbolExternal(symbol, count, entropy, session, params);
             return;
         }
@@ -105,13 +108,13 @@ contract BaseSlotsTest is Test {
 
     function testResolveSymbolInvalidSymbol() public {
         SlotParams memory params = slots.getParams();
-        vm.expectRevert("Invalid symbol parsed from board for this contract");
+        vm.expectRevert(abi.encodeWithSelector(BaseSlots.InvalidSymbol.selector, params.symbols + 1));
         slots.resolveSymbolExternal(params.symbols + 1, 0, 0, SlotSession(address(this), 0, 0, 0), params);
     }
 
     function testResolveSymbolScatter() public {
         SlotParams memory params = slots.getParams();
-        vm.expectRevert("Symbol cannot be a scatter symbol");
+        vm.expectRevert(abi.encodeWithSelector(BaseSlots.InvalidSymbol.selector, params.scatterSymbol));
         slots.resolveSymbolExternal(params.scatterSymbol, 0, 0, SlotSession(address(this), 0, 0, 0), params);
     }
 
@@ -259,7 +262,7 @@ contract BaseSlotsTest is Test {
         // scatter symbol functionality
         MockBaseSlots slotsNoScatter = new MockBaseSlots(
             SlotParams(3, 5, 6, WILDCARD, 7, 255, 115, 20, 5, 500, 1e18),
-            address(this)
+            addressRegistry
         );
 
         SlotSession memory session = SlotSession(address(this), 1e18, 0, 0);

@@ -5,22 +5,25 @@ import "forge-std/Test.sol";
 import "test/mocks/games/slots/MockSingleLineSlots.sol";
 
 import { Board } from "src/libraries/Board.sol";
+import { MockAddressRegistry } from "test/mocks/upgrades/MockAddressRegistry.sol";
 
-contract SlotsTest is Test {
+contract SingleLineSlotsTest is Test {
     uint256 constant WINNING_ENTROPY = uint256(keccak256(abi.encodePacked(uint256(255))));
 
     uint32 constant WILDCARD = 4;
     uint32 constant SCATTER = 5;
 
     MockSingleLineSlots slots;
+    MockAddressRegistry addressRegistry;
 
     receive() external payable {}
     fallback() external payable {}
 
     function setUp() public virtual {
+        addressRegistry = new MockAddressRegistry();
         slots = new MockSingleLineSlots(
             SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            address(this)
+            addressRegistry
         );
     }
 
@@ -80,7 +83,7 @@ contract SlotsTest is Test {
         // Configure slots to have no wildcard set (set wildcard to 255)
         MockSingleLineSlots slotsNoWildcard = new MockSingleLineSlots(
             SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            address(this)
+            addressRegistry
         );
 
         // Test with 'wildcard' in middle

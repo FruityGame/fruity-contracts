@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
+import "src/upgrades/AddressRegistry.sol";
 import "src/games/slots/MultiLineSlots.sol";
 
 import "test/mocks/games/slots/jackpot/MockLocalJackpotResolver.sol";
@@ -12,10 +13,10 @@ contract MockMuliLineSlots is MultiLineSlots, MockLocalJackpotResolver, MockPaym
 
     constructor(
         SlotParams memory slotParams,
-        uint256[] memory winlines,
-        address owner
+        AddressRegistry registry,
+        uint256[] memory winlines
     )
-        MultiLineSlots(slotParams, winlines, owner)
+        MultiLineSlots(slotParams, registry, winlines)
     {}
 
     function getSession(uint256 betId) internal view override

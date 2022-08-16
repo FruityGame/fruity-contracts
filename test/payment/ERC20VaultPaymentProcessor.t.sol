@@ -65,9 +65,7 @@ contract ERC20VaultPaymentProcessorTest is Test {
     }
 
     function testDepositWithMessageValue() public {
-        token.approve(address(paymentProcessor), 1e18);
-
-        vm.expectRevert("Contract doesn't accept the native token");
+        vm.expectRevert(abi.encodeWithSelector(ERC20PaymentProcessor.MsgValueNotAllowed.selector));
         paymentProcessor.depositExternal{value: 1}(address(this), 1e18);
 
         assertEq(token.balanceOf(address(this)), FUNDS);

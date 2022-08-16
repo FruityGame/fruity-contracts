@@ -8,9 +8,17 @@ import { Checkpoints } from "src/libraries/Checkpoints.sol";
 abstract contract ERC20Snapshot is ERC20Hooks {
     using Checkpoints for Checkpoints.History;
 
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                            STORAGE
+    /////////////////////////////////////////////////////////////////////////////////////////*/
+
     Checkpoints.History internal totalSupplyCheckpoints;
     mapping(address => Checkpoints.History) internal balanceCheckpoints;
-    
+
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                         PUBLIC METHODS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
+
     function getTotalSupplyAt(uint256 blockNumber) public view virtual returns (uint256) {
         return totalSupplyCheckpoints.getAtBlock(blockNumber);
     }
@@ -19,9 +27,9 @@ abstract contract ERC20Snapshot is ERC20Hooks {
         return balanceCheckpoints[user].getAtBlock(blockNumber);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL HOOKS LOGIC
-    //////////////////////////////////////////////////////////////*/
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                         INTERNAL HOOKS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual override {
         if (to != address(this)) balanceCheckpoints[to].push(newBalance);

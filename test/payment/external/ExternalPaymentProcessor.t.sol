@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
-import "test/mocks/payment/proxy/MockExternalPaymentProcessor.sol";
+import "test/mocks/payment/external/MockExternalPaymentProcessor.sol";
 
 contract ExternalPaymentProcessorTest is Test {
     MockExternalPaymentProcessor paymentProcessor;

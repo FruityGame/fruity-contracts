@@ -2,18 +2,18 @@
 pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
-import "test/mocks/payment/proxy/MockExternalPaymentProcessor.sol";
-import "test/mocks/payment/proxy/MockProxyPaymentProcessor.sol";
+import "test/mocks/payment/external/MockExternalPaymentProcessor.sol";
+import "test/mocks/payment/external/MockRemotePaymentProcessor.sol";
 
-contract ProxyPaymentProcessorTest is Test {
+contract RemotePaymentProcessorTest is Test {
     MockExternalPaymentProcessor paymentProcessorExternal;
-    MockProxyPaymentProcessor paymentProcessor;
+    MockRemotePaymentProcessor paymentProcessor;
 
     uint8 constant PAYMENT_ROLE = 1;
 
     function setUp() public virtual {
         paymentProcessorExternal = new MockExternalPaymentProcessor();
-        paymentProcessor = new MockProxyPaymentProcessor(paymentProcessorExternal);
+        paymentProcessor = new MockRemotePaymentProcessor(paymentProcessorExternal);
     }
 
     function testCallBalance() public {

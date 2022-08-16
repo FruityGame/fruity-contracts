@@ -4,9 +4,7 @@ pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 
-/// @notice Modern and gas efficient ERC20 + EIP-2612 implementation.
-/// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol)
-/// @author Modified from Uniswap (https://github.com/Uniswap/uniswap-v2-core/blob/master/contracts/UniswapV2ERC20.sol)
+/// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol)
 /// @dev Do not manually set balances without updating totalSupply, as the sum of all user balances must not exceed it.
 abstract contract ERC20Hooks is ERC20 {
     constructor(
@@ -15,20 +13,9 @@ abstract contract ERC20Hooks is ERC20 {
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {}
 
-    function _transferFromUnchecked(address from, address to, uint256 amount) internal virtual returns (bool) {
-        //require(from != address(0), "ERC20 address(0) Invariant");
-
-        if (to == address(0)) {
-            _burn(from, amount);
-            return true;
-        }
-
-        _afterTransfer(from, to, balanceOf[from] -= amount, balanceOf[to] += amount);
-
-        emit Transfer(from, to, amount);
-
-        return true;
-    }
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                        PUBLIC METHODS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
         // Okay to call, as from will only ever be msg.sender
@@ -48,9 +35,9 @@ abstract contract ERC20Hooks is ERC20 {
         return _transferFromUnchecked(from, to, amount);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                        INTERNAL MINT/BURN LOGIC
-    //////////////////////////////////////////////////////////////*/
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                        INTERNAL METHODS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _mint(address to, uint256 amount) internal virtual override {
         _afterMint(to, balanceOf[to] += amount, totalSupply += amount);
@@ -64,9 +51,24 @@ abstract contract ERC20Hooks is ERC20 {
         emit Transfer(from, address(0), amount);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL HOOKS LOGIC
-    //////////////////////////////////////////////////////////////*/
+    function _transferFromUnchecked(address from, address to, uint256 amount) internal virtual returns (bool) {
+        //require(from != address(0), "ERC20 address(0) Invariant");
+
+        if (to == address(0)) {
+            _burn(from, amount);
+            return true;
+        }
+
+        _afterTransfer(from, to, balanceOf[from] -= amount, balanceOf[to] += amount);
+
+        emit Transfer(from, to, amount);
+
+        return true;
+    }
+
+    /*/////////////////////////////////////////////////////////////////////////////////////////
+                                        INTERNAL HOOKS
+    /////////////////////////////////////////////////////////////////////////////////////////*/
 
     function _afterMint(address to, uint256 newBalance, uint256 newTotalSupply) internal virtual;
 

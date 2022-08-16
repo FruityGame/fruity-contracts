@@ -2,7 +2,7 @@
 pragma solidity ^0.8;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import "src/payment/vault/ERC20VaultPaymentProcessor.sol";
+import "src/payment/erc20/ERC20VaultPaymentProcessor.sol";
 
 contract MockERC20VaultPaymentProcessor is ERC20VaultPaymentProcessor {
     modifier canAfford(uint256 payoutWad) override {

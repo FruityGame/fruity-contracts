@@ -10,10 +10,10 @@ import { ChainlinkConsumer } from "src/randomness/consumer/Chainlink.sol";
 import { GamesPool } from "src/GamesPool.sol";
 import { Fruity } from "src/games/slots/machines/Fruity.sol";
 import { Governor } from "src/governance/Governor.sol";
-import { ERC20VaultPaymentProcessor } from "src/payment/vault/ERC20VaultPaymentProcessor.sol";
-import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
+import { ERC20VaultPaymentProcessor } from "src/payment/erc20/ERC20VaultPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/external/ExternalPaymentProcessor.sol";
 
-contract GamesPoolTest is Test {
+/*contract GamesPoolTest is Test {
     GamesPool gamesPool;
     Fruity game;
 
@@ -48,7 +48,7 @@ contract GamesPoolTest is Test {
         token.mintExternal(user1, 500e18);
         token.mintExternal(user2, 500e18);
     }
-}
+}*/
 /*contract GamesPoolTest is Test {
     GamesPool gamesPool;
     Fruity game;

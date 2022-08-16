@@ -5,8 +5,9 @@ pragma solidity 0.8.7;
 import { ERC20Hooks } from "src/tokens/ERC20Hooks.sol";
 
 abstract contract ERC20Proxy is ERC20Hooks {
+
     /*/////////////////////////////////////////////////////////////////////////////////////////
-                                            CONSTANTS
+                                          CONSTANTS
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
     bytes32 constant public TRANSFER_PROXY_TYPEHASH = keccak256("TransferProxy(address owner,address to,uint256 amount,address proxy,uint256 nonce)");
@@ -35,6 +36,7 @@ abstract contract ERC20Proxy is ERC20Hooks {
     /////////////////////////////////////////////////////////////////////////////////////////*/
 
     mapping(address => Session) internal sessions;
+    mapping(address => uint256) public proxyNonces;
 
     /*/////////////////////////////////////////////////////////////////////////////////////////
                                         PUBLIC METHODS
@@ -43,10 +45,6 @@ abstract contract ERC20Proxy is ERC20Hooks {
     // uint16 gives a max sessionLength of 65535 blocks, which should be ample for short-lived proxy sessions
     function createSession(address proxy, uint16 sessionLength) public virtual {
         require(proxy != address(0), "Invalid Proxy Address provided");
-
-        // We also require that each Proxy address/key is Ephemeral for the purpose of forward secrecy.
-        // The odds of a collision between two users (two people generate the same Proxy Key/Address) is infinitesimally small
-        require(nonces[proxy] == 0, "Proxy Address already used");
 
         // This will overwrite the user's session if one is already active. This is fine,
         // as it allows a user to refresh/change their session parameters
@@ -70,7 +68,7 @@ abstract contract ERC20Proxy is ERC20Hooks {
         // EIP712, Validate message signed with the Proxy key
         _validateProxyMessage(
             proxy,
-            keccak256(abi.encode(END_SESSION_TYPEHASH, owner, proxy, nonces[proxy]++)),
+            keccak256(abi.encode(END_SESSION_TYPEHASH, owner, proxy, proxyNonces[proxy]++)),
             v, r, s
         );
 
@@ -97,7 +95,7 @@ abstract contract ERC20Proxy is ERC20Hooks {
         // EIP712, Validate message signed with the Proxy Key
         _validateProxyMessage(
             proxy,
-            keccak256(abi.encode(TRANSFER_PROXY_TYPEHASH, owner, to, amount, proxy, nonces[proxy]++)),
+            keccak256(abi.encode(TRANSFER_PROXY_TYPEHASH, owner, to, amount, proxy, proxyNonces[proxy]++)),
             v, r, s
         );
 

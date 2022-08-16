@@ -26,7 +26,7 @@ abstract contract EIP712 {
         return keccak256(abi.encode(TYPE_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
-    function hashTypedData(bytes32 dataHash) internal view virtual returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), dataHash));
+    function hashTypedData(bytes32 messageHash) internal view virtual returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), messageHash));
     }
 }

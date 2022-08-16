@@ -2,9 +2,9 @@
 pragma solidity 0.8.7;
 
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
-import { ExternalPaymentProcessor } from "src/payment/proxy/ExternalPaymentProcessor.sol";
+import { ExternalPaymentProcessor } from "src/payment/external/ExternalPaymentProcessor.sol";
 
-abstract contract ProxyPaymentProcessor is PaymentProcessor {
+abstract contract RemotePaymentProcessor is PaymentProcessor {
     ExternalPaymentProcessor internal proxyProcessor;
 
     constructor (ExternalPaymentProcessor _proxyProcessor) {

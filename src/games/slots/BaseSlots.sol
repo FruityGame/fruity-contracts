@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity 0.8.7;
 
-import { Board } from "src/libraries/Board.sol";
+import { AddressRegistry } from "src/upgrades/AddressRegistry.sol";
 import { RandomnessBeacon } from "src/randomness/RandomnessBeacon.sol";
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
 import { JackpotResolver } from "src/games/slots/jackpot/JackpotResolver.sol";
-
-import { Owned } from "solmate/auth/Owned.sol";
+import { Board } from "src/libraries/Board.sol";
+import { Game } from "src/games/Game.sol";
 
 // Largest symbol that can be parsed from each 4 bit section of the board
 uint256 constant MAX_SYMBOL = 15;
@@ -38,7 +38,7 @@ struct SlotSession {
 }
 
 // Base contract for other Slots contracts to derive from with core logic
-abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver, Owned {
+abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolver, Game {
     SlotParams public params;
 
     event BetPlaced(address indexed user, uint256 betId);
@@ -47,9 +47,10 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
 
     error BetTooSmall(uint256 userCredits, uint256 minCredits);
     error BetTooLarge(uint256 userCredits, uint256 maxCredits);
-    error InvalidSession(address user, uint256 betId);
 
-    error InvalidParams(bytes message);
+    error InvalidSession(address user, uint256 betId);
+    error InvalidSymbol(uint256 symbol);
+    error InvalidParams();
 
     modifier canAfford(uint256 payoutWad) virtual override {
         if (payoutWad > availableAssets()) {
@@ -65,31 +66,34 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
     }
 
     modifier isValidSymbol(uint256 symbol, SlotParams memory _params) {
-        require(symbol <= _params.symbols, "Invalid symbol parsed from board for this contract");
+        if (symbol > _params.symbols) revert InvalidSymbol(symbol);
         _;
     }
 
     modifier isNotScatter(uint256 symbol, SlotParams memory _params) {
-        require(symbol != _params.scatterSymbol, "Symbol cannot be a scatter symbol");
+        if (symbol == _params.scatterSymbol) revert InvalidSymbol(symbol);
         _;
     }
 
+    // Trying to save bytecode by not using 
     modifier sanitizeParams(SlotParams memory _params) virtual {
-        require(_params.rows > 0 && _params.rows <= 8, "Invalid Param: rows");
-        require(_params.reels > 0 && _params.reels <= 8, "Invalid Param: reels");
-        require(_params.symbols > 0 && _params.symbols <= 15, "Invalid Param: symbols");
-        require(_params.payoutConstant > 0, "Invalid Param: payoutConstant");
-        require(_params.maxBetCredits > 0, "Invalid Param: maxBetCredits");
-        require(_params.maxJackpotCredits > 0, "Invalid Param: maxJackpotCredits");
-        require(_params.creditSizeWad > 0, "Invalid Param: creditSizeWad");
+        if(_params.rows == 0 || _params.rows > 8 ||
+         _params.reels == 0 || _params.reels > 8 ||
+         _params.symbols == 0 && _params.symbols > 15 ||
+         _params.payoutConstant == 0 ||
+         _params.maxBetCredits == 0 ||
+         _params.maxJackpotCredits == 0 ||
+         _params.creditSizeWad == 0) revert InvalidParams();
         _;
     }
 
-    constructor(SlotParams memory slotParams, address owner)
-        sanitizeParams(slotParams)
-        Owned(owner)
+    constructor(SlotParams memory slotParams, AddressRegistry addressRegistry) sanitizeParams(slotParams)
+        Game(addressRegistry)
     {
         params = slotParams;
+
+        // Setup Governor role to allow Governance to configure machine params
+        getRolesWithCapability[address(this)][BaseSlots.setParams.selector] |= bytes32(1 << uint8(Roles.Governor));
     }
 
     /*
@@ -212,7 +216,7 @@ abstract contract BaseSlots is RandomnessBeacon, PaymentProcessor, JackpotResolv
         Governor related methods
     */
 
-    function setParams(SlotParams memory _params) external onlyOwner() sanitizeParams(_params) {
+    function setParams(SlotParams memory _params) external requiresAuth() sanitizeParams(_params) {
         params = _params;
     }
 }

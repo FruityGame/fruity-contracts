@@ -3,15 +3,18 @@ pragma solidity 0.8.7;
 
 library Winline {
     error InvalidWinlineNibble(uint256 nibble);
+    error InvalidWinlineLength(uint256 length);
+    error InvalidWinlineIndex(uint256 index);
+    error InvalidWinlineNibbleIndex(uint256 index);
 
     modifier winlineParamsInBounds(uint256 winlineIndex, uint256 winlineLen) {
-        require(winlineLen > 0, "Invalid winline length provided");
-        require(winlineIndex < 256 / (winlineLen * 2), "Invalid winline index provided");
+        if (winlineLen == 0 || winlineLen > 255) revert InvalidWinlineLength(winlineLen);
+        if (winlineIndex >= 256 / (winlineLen * 2)) revert InvalidWinlineIndex(winlineIndex);
         _;
     }
 
     modifier nibbleParamsInBounds(uint256 nibbleIndex, uint256 winlineLen) {
-        require(nibbleIndex < winlineLen, "Invalid winline nibble index provided");
+        if (nibbleIndex >= winlineLen) revert InvalidWinlineNibbleIndex(nibbleIndex);
         _;
     }
 

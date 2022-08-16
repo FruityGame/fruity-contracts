@@ -41,18 +41,18 @@ contract BoardTest is Test {
     function testGenerateInvalidSize() public {
         // Params with 13 columns (reels), 0 rows
         SlotParams memory params = SlotParams(0, 13, 6, 255, 255, 255, 95, 0, 5, 500, 1e18);
-        vm.expectRevert("Invalid board size provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidBoardSize.selector, 0));
         uint256 layout = Board.generate(MAX_INT, params);
         assertEq(layout, 0);
 
         // Params with 13 columns, 5 rows (5 * 13 == 65)
         params.rows = 5;
-        vm.expectRevert("Invalid board size provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidBoardSize.selector, 65));
         Board.generate(MAX_INT, params);
     
         // Params with 0 columns (reels), 5 rows
         params.reels = 0;
-        vm.expectRevert("Invalid board size provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidBoardSize.selector, 0));
         Board.generate(MAX_INT, params);
     }
 
@@ -64,18 +64,18 @@ contract BoardTest is Test {
     function testGenerateInvalidSymbols() public {
         // Params with 16 symbols
         SlotParams memory params = SlotParams(3, 5, 16, 255, 255, 255, 95, 0, 5, 500, 1e18);
-        vm.expectRevert("Invalid number of symbols provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidSymbols.selector, 16));
         Board.generate(MAX_INT, params);
 
         // Params with 0 symbols (would cause the curve function to fail)
         params.symbols = 0;
-        vm.expectRevert("Invalid number of symbols provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidSymbols.selector, 0));
         Board.generate(MAX_INT, params);
     }
 
     function testGenerateInvalidPayoutConstant() public {
         SlotParams memory params = SlotParams(3, 5, 6, 255, 255, 255, 0, 0, 5, 500, 1e18);
-        vm.expectRevert("Invalid payout constant provided");
+        vm.expectRevert(abi.encodeWithSelector(Board.InvalidPayoutConstant.selector, 0));
         Board.generate(MAX_INT, params);
     }
 

@@ -29,7 +29,13 @@ contract WinlineTest is Test {
         uint256 bloom = 0;
 
         bloom = Bloom.insertChecked(bloom, item);
-        vm.expectRevert("Duplicate item detected");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Bloom.DuplicateElement.selector,
+                bloom,
+                item
+            )
+        );
         Bloom.insertChecked(bloom, item);
     }
 

@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import { MockERC20Proxy } from "test/mocks/tokens/MockERC20Proxy.sol";
 
-contract ERC20ProxyTest is Test {
+contract RelayerTest is Test {
     receive() external payable {}
     fallback() external payable {}
 
@@ -35,7 +35,7 @@ contract ERC20ProxyTest is Test {
             to,
             amount,
             proxyAddress,
-            token.nonces(proxyAddress)
+            token.proxyNonces(proxyAddress)
         );
 
         messageHash =
@@ -56,7 +56,7 @@ contract ERC20ProxyTest is Test {
             token.END_SESSION_TYPEHASH(),
             user,
             proxyAddress,
-            token.nonces(proxyAddress)
+            token.proxyNonces(proxyAddress)
         );
 
         messageHash =
@@ -108,23 +108,6 @@ contract ERC20ProxyTest is Test {
         vm.prank(testUser);
         vm.expectRevert("Invalid Proxy Address provided");
         token.createSession(address(0), uint16(150));
-    }
-
-    function testCreateSessionAlreadyUsedKey() public {
-        // Setup the user with some funds
-        token.mintExternal(testUser, 1e18);
-
-        // Register the Proxy Key with the user's account
-        vm.prank(testUser);
-        token.createSession(testUserProxy, uint16(150));
-
-        // Simulate sending a message by incrementing the proxy nonce
-        token.incrementNonce(testUserProxy);
-
-        // Attempt to re-register our session with the same Proxy Key
-        vm.expectRevert("Proxy Address already used");
-        vm.prank(testUser);
-        token.createSession(testUserProxy, uint16(200));
     }
 
     function testTransferProxy() public {

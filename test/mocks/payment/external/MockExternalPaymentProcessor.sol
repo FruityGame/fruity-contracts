@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import "solmate/auth/authorities/RolesAuthority.sol";
-import "src/payment/proxy/ExternalPaymentProcessor.sol";
+import "src/payment/external/ExternalPaymentProcessor.sol";
 import "test/mocks/payment/MockPaymentProcessor.sol";
 
 contract MockExternalPaymentProcessor is ExternalPaymentProcessor, MockPaymentProcessor, RolesAuthority {

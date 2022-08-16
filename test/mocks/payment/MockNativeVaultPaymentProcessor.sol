@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "src/payment/vault/NativeVaultPaymentProcessor.sol";
+import "src/payment/native/NativeVaultPaymentProcessor.sol";
 
 contract MockNativeVaultPaymentProcessor is NativeVaultPaymentProcessor {
     modifier canAfford(uint256 payoutWad) override {

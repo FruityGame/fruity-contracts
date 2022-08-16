@@ -8,13 +8,17 @@ library Board {
     uint256 constant WAD = 1e18;
     uint256 constant MASK_4 = (0x1 << 4) - 1;
 
+    error InvalidSymbols(uint256 symbols);
+    error InvalidBoardSize(uint256 boardSize);
+    error InvalidPayoutConstant(uint256 payoutConstant);
+
     modifier symbolsWithinBounds(SlotParams memory params) {
-        require(params.symbols > 0 && params.symbols <= 15, "Invalid number of symbols provided");
+        if (params.symbols == 0 || params.symbols > 15) revert InvalidSymbols(params.symbols);
         _;
     }
 
     modifier payoutConstantWithinBounds(SlotParams memory params) {
-        require(params.payoutConstant > 0, "Invalid payout constant provided");
+        if (params.payoutConstant == 0) revert InvalidPayoutConstant(params.payoutConstant);
         _;
     }
 
@@ -52,7 +56,7 @@ library Board {
         payoutConstantWithinBounds(params)
     returns (uint256 out) {
         uint256 boardSize = params.reels * params.rows;
-        require(boardSize > 0 && boardSize <= 64, "Invalid board size provided");
+        if (boardSize == 0 || boardSize > 64) revert InvalidBoardSize(boardSize);
 
         uint256 symbolCountWad = toWad(params.symbols);
         uint256 payoutConstantWad = toWad(params.payoutConstant);

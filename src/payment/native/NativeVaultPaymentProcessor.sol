@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import { ERC4626Native } from "src/mixins/ERC4626Native.sol";
-import { NativePaymentProcessor } from "src/payment/NativePaymentProcessor.sol";
+import { NativePaymentProcessor } from "src/payment/native/NativePaymentProcessor.sol";
 
 abstract contract NativeVaultPaymentProcessor is NativePaymentProcessor, ERC4626Native {
     struct VaultParams {

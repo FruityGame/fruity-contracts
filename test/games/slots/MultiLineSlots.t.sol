@@ -6,8 +6,9 @@ import "test/mocks/games/slots/MockMuliLineSlots.sol";
 
 import { Board } from "src/libraries/Board.sol";
 import { PaymentProcessor } from "src/payment/PaymentProcessor.sol";
+import { MockAddressRegistry } from "test/mocks/upgrades/MockAddressRegistry.sol";
 
-contract SlotsTest is Test {
+contract MultiLineSlotsTest is Test {
     // 01|01|01|01|01
     uint256 constant WINLINE = 341;
     // 01|10|11|10|01
@@ -22,15 +23,17 @@ contract SlotsTest is Test {
     uint32 constant SCATTER = 5;
 
     MockMuliLineSlots slots;
+    MockAddressRegistry addressRegistry;
 
     receive() external payable {}
     fallback() external payable {}
 
     function setUp() public virtual {
+        addressRegistry = new MockAddressRegistry();
         slots = new MockMuliLineSlots(
             SlotParams(3, 5, 6, WILDCARD, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            mockWinlines(),
-            address(this)
+            addressRegistry,
+            mockWinlines()
         );
     }
 
@@ -92,8 +95,8 @@ contract SlotsTest is Test {
         // Configure slots to have no wildcard set (set wildcard to 255)
         MockMuliLineSlots slotsNoWildcard = new MockMuliLineSlots(
             SlotParams(3, 5, 6, 255, SCATTER, 255, 115, 20, 5, 500, 1e18),
-            mockWinlines(),
-            address(this)
+            addressRegistry,
+            mockWinlines()
         );
 
         //                                                                4    3    2    1    0
@@ -168,13 +171,20 @@ contract SlotsTest is Test {
 
     function testCountWinlinesDuplicate() public {
         uint256 duplicateWinline = (WINLINE << 10) | WINLINE;
+        uint256 expectedBloomInError = Bloom.insert(0, bytes32(WINLINE));
 
-        vm.expectRevert("Duplicate item detected");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Bloom.DuplicateElement.selector,
+                expectedBloomInError,
+                bytes32(WINLINE)
+            )
+        );
         slots.countWinlinesExternal(duplicateWinline);
     }
 
     function testCountWinlinesInvalidWinline() public {
-        vm.expectRevert("Invalid winline parsed for contract");
+        vm.expectRevert(abi.encodeWithSelector(MultiLineSlots.InvalidWinline.selector, bytes32(uint256(614))));
         slots.countWinlinesExternal(614);
     }
 

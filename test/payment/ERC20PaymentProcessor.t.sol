@@ -42,10 +42,8 @@ contract ERC20PaymentProcessorTest is Test {
         assertEq(paymentProcessor._balance(), FUNDS);
     }
 
-    function testDepositWithMessageValue() public {
-        token.approve(address(paymentProcessor), 1e18);
-
-        vm.expectRevert("Contract doesn't accept the native token");
+    function testFailDepositWithMessageValue() public {
+        vm.expectRevert(abi.encodeWithSelector(ERC20PaymentProcessor.MsgValueNotAllowed.selector));
         paymentProcessor.depositExternal{value: 1}(address(this), 1e18);
 
         assertEq(token.balanceOf(address(this)), FUNDS);
@@ -71,7 +69,13 @@ contract ERC20PaymentProcessorTest is Test {
     function testDepositZero() public {
         token.approve(address(paymentProcessor), 1e18);
 
-        vm.expectRevert("Deposit must be greater than zero");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentProcessor.InvalidDeposit.selector,
+                address(this),
+                0
+            )
+        );
         paymentProcessor.depositExternal(address(this), 0);
 
         assertEq(token.balanceOf(address(this)), FUNDS);

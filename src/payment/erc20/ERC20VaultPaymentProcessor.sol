@@ -3,7 +3,7 @@ pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ERC4626 } from "src/mixins/ERC4626.sol";
-import { ERC20PaymentProcessor } from "src/payment/ERC20PaymentProcessor.sol";
+import { ERC20PaymentProcessor } from "src/payment/erc20/ERC20PaymentProcessor.sol";
 
 abstract contract ERC20VaultPaymentProcessor is ERC20PaymentProcessor, ERC4626 {
     struct VaultParams {
