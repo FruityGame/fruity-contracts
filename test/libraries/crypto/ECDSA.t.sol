@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
-import { ECDSA } from "src/libraries/ECDSA.sol";
+import { ECDSA } from "src/libraries/crypto/ECDSA.sol";
 
 contract ECDSATest is Test {
     function setUp() public virtual {}

@@ -4,7 +4,7 @@ pragma solidity 0.8.7;
 
 import "forge-std/Test.sol";
 
-import { Certificates } from "src/libraries/Certificates.sol";
+import { Certificates } from "src/libraries/crypto/Certificates.sol";
 
 contract SessionsTest is Test {
     function setUp() public virtual {}
@@ -20,7 +20,7 @@ contract SessionsTest is Test {
         uint192 expiry = uint192(entropy & UINT192_MASK);
 
         (uint256 lhs, uint256 rhs) = Certificates.compress(user1, user2, expiry);
-        (address recoveredUser1, address recoveredUser2, uint256 recoveredExpiry) = Sessions.expand(lhs, rhs);
+        (address recoveredUser1, address recoveredUser2, uint256 recoveredExpiry) = Certificates.expand(lhs, rhs);
 
         assertEq(recoveredUser1, user1);
         assertEq(recoveredUser2, user2);

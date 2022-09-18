@@ -3,20 +3,18 @@ pragma solidity 0.8.7;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ProxyReceiver } from "src/proxy/ProxyReceiver.sol";
-import { SessionRegistry } from "src/proxy/SessionRegistry.sol";
-import { ERC20PaymentProcessor } from "src/payment/erc20/ERC20PaymentProcessor.sol";
+import { ProxyRelayer } from "src/proxy/ProxyRelayer.sol";
 
-contract MockProxyReceiver is ERC20PaymentProcessor, ProxyReceiver {
-    uint256 public executedCount;
+contract MockProxyReceiver is ProxyReceiver {
+    uint256 public amount;
 
-    constructor(ERC20 token, SessionRegistry sessionRegistry)
-        ERC20PaymentProcessor(token)
-        ProxyReceiver(sessionRegistry)
-    {
+    constructor() {}
 
+    function mockExecute(uint256 _amount) public {
+        amount = _amount;
     }
 
-    function mockExecute() public {
-        executedCount++;
+    function mockExecuteRevert() public {
+        revert();
     }
 }

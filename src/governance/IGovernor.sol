@@ -64,7 +64,7 @@ interface IGovernor {
         bytes32 descriptionHash
     ) external pure returns (uint256);
 
-    function state(uint256 proposalId) external view virtual returns (ProposalState);
+    function state(uint256 proposalId) external view returns (ProposalState);
 
     function proposalSnapshot(uint256 proposalId) external view returns (uint256);
 
